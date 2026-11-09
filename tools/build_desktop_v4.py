@@ -50,7 +50,7 @@ def source_entries(root=ROOT):
         if p.is_file():entries[p.relative_to(root).as_posix()]=p
     entries['runs/tdx-all-a-20261106/universe.json']=Path(os.environ.get('CHANLUN_V4_UNIVERSE',str(root/'runs/tdx-all-a-20261106/universe.json')))
     entries['runtime/tdx-api-revised.exe']=root/'runtime/tdx-api-revised.exe'
-    for symbol in ['sz300949','sz000001','sh600519','bj920002','sh600531','sh600000','sz000002']:
+    for symbol in ['sz300949','sz000001','sh600519','bj920002','sh600531','sh600000','sz000002','sh600419','sz000529']:
         for period in ['day','minute30','minute5']:
             suffix='.csv' if period=='day' else '.csv.gz'
             paths=[f'market_data/tdx/{period}/ohlcv/{symbol}{suffix}',f'market_data/tdx/{period}/metadata/{symbol}.json']
@@ -68,7 +68,7 @@ from workbench.compute import process_stock
 from chanmodel.tdx_data import now_iso
 from chanmodel.release import APP_LABEL
 seed();results=[]
-for symbol in ['sz300949','sz000001','sh600000','bj920002']:
+for symbol in ['sz300949','sz000001','sh600000','bj920002','sh600419','sz000529']:
     with connect() as db:record=dict(db.execute('SELECT * FROM universe WHERE symbol=?',(symbol,)).fetchone())
     result=process_stock(record,{'mode':'day','refresh':False,'cutoff':'2026-11-05T15:00:00+08:00','volume_tolerance':1},'bundled-v4')
     assert result['state']=='success',result
