@@ -305,7 +305,7 @@ class WorkerCacheTests(MarketRunFixture):
         self.assertEqual(result["status"], "failed")
         self.assertFalse(detail.exists())
         quarantined = Path(result["quarantined_detail"])
-        self.assertTrue(quarantined.is_relative_to(self.run_dir / "quarantine"))
+        self.assertTrue(quarantined.resolve().is_relative_to((self.run_dir / "quarantine").resolve()))
         self.assertEqual(quarantined.read_bytes(), old)
 
 

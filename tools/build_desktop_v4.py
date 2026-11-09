@@ -63,6 +63,16 @@ for symbol in ['sz300949','sz000001','sh600000','bj920002']:
     with connect() as db:publish_result(db,symbol,'day','bundled-v4',now_iso(),json.dumps(result['summary'],ensure_ascii=False),result['artifact'])
     results.append({'symbol':symbol,'algorithm':result['summary']['algorithm'],'bars':result['summary']['periods']['day']['bars'],'artifact':result['artifact']})
 (ROOT/'seed-validation.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
+import os,shutil
+source=os.environ.get('CHANLUN_V4_BACKTEST')
+if source:
+    source=Path(source);target=ROOT/'runtime/workbench/backtests/bundled-all-market';target.mkdir(parents=True,exist_ok=True)
+    for name in ['summary.json','stocks.csv']:
+        shutil.copy2(source/name,target/name)
+    summary=json.loads((target/'summary.json').read_text(encoding='utf-8'))
+    value={'id':'bundled-all-market','created':'2026-11-10T03:00:00+08:00','cutoff':'2026-11-10T02:10:00+08:00',
+           'state':'complete','pid':None,'total':summary['total'],'output':'runtime/workbench/backtests/bundled-all-market'}
+    with connect() as db:db.execute('INSERT OR REPLACE INTO metadata VALUES(?,?)',('backtest:bundled-all-market',json.dumps(value)))
 print(json.dumps(results,ensure_ascii=False))
 '''
 
