@@ -132,13 +132,16 @@ def main():
     if not PYTHON.is_file():raise FileNotFoundError('the existing pinned build environment is required')
     build=make_seed();resources=OUT/'resources'
     version_file=resources/'windows-version.txt'
-    version_file.write_text("""VSVersionInfo(
+    version_template="""VSVersionInfo(
  ffi=FixedFileInfo(filevers=(4,0,0,0),prodvers=(4,0,0,0),mask=0x3f,flags=0x0,OS=0x40004,fileType=0x1,subtype=0x0,date=(0,0)),
  kids=[StringFileInfo([StringTable('080404b0',[
   StringStruct('FileDescription','缠论完整算法工作台 V4'),
   StringStruct('FileVersion','4.0.0'),StringStruct('ProductName','Chanlun Workbench V4'),
   StringStruct('ProductVersion','4.0.0'),StringStruct('OriginalFilename','ChanlunWorkbenchV4.exe')
- ])]),VarFileInfo([VarStruct('Translation',[2052,1200])])])""",encoding='utf-8')
+ ])]),VarFileInfo([VarStruct('Translation',[2052,1200])])])"""
+    version_tuple=','.join(APP_VERSION.split('.')+['0'])
+    version_template=version_template.replace('(4,0,0,0)','('+version_tuple+')').replace('4.0.0',APP_VERSION)
+    version_file.write_text(version_template,encoding='utf-8')
     print('V4 seed verified; compiling executable',flush=True)
     arguments=[str(PYTHON),'-m','PyInstaller','--noconfirm','--clean','--onefile','--windowed',
                '--name','ChanlunWorkbenchV4','--distpath',str(OUT/'dist'),'--workpath',str(OUT/'pyinstaller-work'),

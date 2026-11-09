@@ -111,6 +111,59 @@ def claim_instance(directory):
     return handle
 
 
+def request_window_close(pid):
+    """Ask only the verified app process to run its own normal close handler."""
+    if os.name!='nt' or not isinstance(pid,int) or pid<=0:return False
+    import ctypes
+    from ctypes import wintypes
+    api=ctypes.WinDLL('user32',use_last_error=True)
+    api.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+    api.PostMessageW.argtypes=[wintypes.HWND,wintypes.UINT,wintypes.WPARAM,wintypes.LPARAM]
+    callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
+    sent=[]
+    def visit(hwnd,unused):
+        owner=wintypes.DWORD();api.GetWindowThreadProcessId(hwnd,ctypes.byref(owner))
+        if owner.value==pid and api.IsWindowVisible(hwnd):
+            if api.PostMessageW(hwnd,0x0010,0,0):sent.append(int(hwnd))
+        return True
+    api.EnumWindows(callback_type(visit),0)
+    return bool(sent)
+
+
+def existing_instance_action(controller):
+    """Never silently send a new build back into an older frozen server."""
+    previous=json.loads(controller.status_path.read_text(encoding='utf-8'))
+    url=previous.get('url')
+    if not url:return 'starting'
+    health=local_json(url+'/api/health',timeout=3)
+    expected=(controller.directory/'project/runtime/workbench/workbench.sqlite3').resolve()
+    if health.get('service')!='chanlun-workbench-v1' or Path(health.get('database','')).resolve()!=expected:
+        raise ValueError('已有本机服务不是当前程序的数据目录，未关闭该服务。')
+    if health.get('version')==APP_VERSION and 'marker_visibility_v2' in health.get('features',[]):
+        if not controller.args.no_browser:webbrowser.open(url+'/?symbol=sz300949')
+        return 'reused'
+    overview=local_json(url+'/api/overview',timeout=3)
+    if any(j.get('state') in {'queued','starting','running','pausing','cancelling'} for j in overview.get('jobs',[])):
+        return 'busy_old_version'
+    # Backtest subprocesses are separate jobs. Preserve them too when handing
+    # off a completed-workbench process to a new build.
+    backtests=local_json(url+'/api/backtests',timeout=3)
+    if any(j.get('state')=='running' for j in backtests.get('runs',[])):
+        return 'busy_old_version'
+    monitor=local_json(url+'/api/monitor',timeout=3)
+    if monitor.get('busy'):return 'busy_old_version'
+    if health.get('pid')!=previous.get('pid') or not request_window_close(health['pid']):
+        return 'old_version_close_required'
+    deadline=time.monotonic()+15
+    while time.monotonic()<deadline:
+        controller.lock=claim_instance(controller.directory)
+        if controller.lock:
+            controller.notify('旧版窗口已正常退出，正在升级买卖画图显示；历史任务保留。')
+            return 'upgraded'
+        time.sleep(.2)
+    return 'old_version_close_required'
+
+
 class DesktopController:
     def __init__(self,args):
         self.args=args;self.directory=app_directory();self.directory.mkdir(parents=True,exist_ok=True)
@@ -272,16 +325,19 @@ def main():
     args=parser.parse_args();controller=DesktopController(args)
     if not controller.lock:
         try:
-            previous=json.loads(controller.status_path.read_text(encoding='utf-8'))
-            if previous.get('url'):
-                local_json(previous['url']+'/api/health',timeout=3)
-                if not args.no_browser:webbrowser.open(previous['url']+'/?symbol=sz300949')
-                return
-        except Exception:pass
-        if not args.headless:
-            from tkinter import messagebox
-            messagebox.showinfo('缠论工作台','程序正在启动，请稍候。')
-        return
+            action=existing_instance_action(controller)
+        except Exception as exc:
+            action='old_version_close_required';logging.exception('Unable to hand off old desktop instance')
+        if action=='reused':return
+        if action!='upgraded':
+            text=('旧版仍有扫描或回测任务运行，请等待完成后关闭旧版窗口，再启动4.0.1；已保存任务不会丢失。'
+                  if action=='busy_old_version' else '旧版窗口仍在运行，请先关闭旧版窗口，再启动4.0.1；本次没有打开旧版页面。')
+            (controller.directory/'upgrade-required.txt').write_text(text,encoding='utf-8')
+            logging.warning(text)
+            if not args.headless:
+                from tkinter import messagebox
+                messagebox.showinfo('V4 4.0.1升级提示',text)
+            return
     if args.headless:
         controller.start()
         if args.stop_after:

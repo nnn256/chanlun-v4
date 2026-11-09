@@ -1,7 +1,7 @@
 'use strict';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
-const S={view:'market',q:'',exchange:'',filter:'',job:new URLSearchParams(location.search).get('job')||'',offset:0,limit:40,total:0,selected:new URLSearchParams(location.search).get('symbol')||'sz300949',data:null,period:'day',range:'all',rank:1,signalSelected:'',charts:[],overview:null,layers:{strokes:true,segments:true,centers:true,signals:true,merged:false,fractals:false,types:false},stockRequest:0,marketRequest:0};
+const S={view:'market',q:'',exchange:'',filter:'',job:new URLSearchParams(location.search).get('job')||'',offset:0,limit:40,total:0,selected:new URLSearchParams(location.search).get('symbol')||'sz300949',data:null,period:'day',range:'signals',rank:1,signalSelected:'',charts:[],overview:null,layers:{strokes:true,segments:true,centers:true,signals:true,merged:false,fractals:false,types:false},stockRequest:0,marketRequest:0};
 const PERIOD={day:'日线','5d':'5日K线','1m':'1分钟','5m':'5分钟','15m':'15分钟','30m':'30分钟','60m':'60分钟',week:'周K线',month:'月K线',quarter:'季K线',year:'年K线',timeshare:'历史分时',five_days:'五日分时',auction:'竞价历史'};
 const MODE={day:'日线扫描',multi:'三周期校验',replay:'逐日回放',full:'全周期历史'};
 const JOB_STATE={queued:'排队中',starting:'准备中',running:'运行中',pausing:'暂停中 · 等待当前股票结束',paused:'已暂停',completed:'已完成',interrupted:'已中断 · 可继续',cancelling:'停止中',cancelled:'已停止'};
@@ -101,7 +101,7 @@ async function selectStock(symbol){
       else box.append(button('计算该股',()=>openJob(symbol),'button primary'));
       return;
     }
-    renderStock();
+    prepareSignalDisplay();renderStock();
   }catch(error){
     if(token!==S.stockRequest||S.selected!==symbol||S.job!==job)return;
     disposeCharts();S.data=null;S.detailJob=job;$('#stock-detail').hidden=true;$('#stock-empty').hidden=false;
@@ -115,7 +115,7 @@ function renderStock(){
   text('#stock-price',fmt(s.price));text('#stock-change',(s.change_pct>=0?'+':'')+fmt(s.change_pct)+'%');
   $('.stock-quote').className='stock-quote '+(s.change_pct>=0?'up':'down');
   text('#stock-date',`行情截止 ${s.last_close_time} · TDX不复权 · 北京时间`);
-  text('#stock-version',(s.algorithm||'原版本')+' / '+(MODE[s.mode]||'三周期校验'));
+  text('#stock-version',(s.algorithm||'原版本')+' · 4.0.1 / '+(MODE[s.mode]||'三周期校验'));
   let message=s.result_text||'结构研究结果';const states=s.multiframe_states||{};
   if(states.waiting_lower_confirmation)message+=`；${states.waiting_lower_confirmation}个历史候选待低级别确认`;
   if(states.blocked_terminal_history)message+=`；${states.blocked_terminal_history}个候选缺少终结段分钟历史`;
@@ -168,7 +168,8 @@ function renderCharts(){
     candles.setData(p.bars.map(b=>isLine?{time:b.time,value:b.value}:{time:b.time,open:b.open,high:b.high,low:b.low,close:b.close}));
     const volume=chart.addSeries(LightweightCharts.HistogramSeries,{priceScaleId:'volume',priceFormat:{type:'volume'},lastValueVisible:false,priceLineVisible:false});
     volume.setData(p.bars.filter(b=>b.volume!=null).map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?'#e8a2a580':'#80c4b780'})));volume.priceScale().applyOptions({scaleMargins:{top:.87,bottom:.01},visible:false});
-    chart.timeScale().setVisibleLogicalRange({from:S.range==='recent'?Math.max(0,p.bars.length-200):-2,to:p.bars.length+8});
+    const initial=SignalChart.presentation(annotations,{period:p.period,rank:S.rank,showInvalid:true}).latest;
+    chart.timeScale().setVisibleLogicalRange(S.range==='signals'&&initial?SignalChart.markerRange(initial,p.bars.length):{from:S.range==='recent'?Math.max(0,p.bars.length-200):-2,to:p.bars.length+8});
     const lookup=new Map(p.bars.map(b=>[b.time,b]));
     chart.subscribeCrosshairMove(param=>{const bar=lookup.get(param.time);if(!bar||!param.point){tooltip.hidden=true;return;}tooltip.hidden=false;tooltip.replaceChildren(node('b','',bar.date_cn));
       for(const [key,value]of (isLine?[['价格',fmt(bar.value)],['成交量',integer(bar.volume)+'股']]:[['开盘',fmt(bar.open)],['最高',fmt(bar.high)],['最低',fmt(bar.low)],['收盘',fmt(bar.close)],['成交量',integer(bar.volume)+'股'],['状态',bar.is_closed===false?'形成中':'已收盘']])){const line=node('div');line.append(node('span','',key),node('span','',value));tooltip.append(line);}
@@ -183,14 +184,14 @@ function renderCharts(){
       if(S.layers.centers)for(const c of p.centers){const a=x(c.start),b=x(c.end),hi=y(c.zg),lo=y(c.zd);if(!valid([a,b,hi,lo]))continue;g.append(svgElement('rect',{x:Math.min(a,b),y:Math.min(hi,lo),width:Math.abs(b-a),height:Math.abs(lo-hi),fill:'#2a9d8e','fill-opacity':.09,stroke:'#50a99e','stroke-width':1}));svgLabel(g,Math.max(6,Math.min(a+6,pw-130)),Math.max(16,hi-7),`${c.zd.toFixed(2)}–${c.zg.toFixed(2)}`,'#288d81',10);}
       if(S.layers.strokes){const ends=new Map();for(const s of p.strokes){const a=x(s.start),b=x(s.end),ya=y(s.start_price),yb=y(s.end_price);if(!valid([a,b,ya,yb]))continue;g.append(svgElement('line',{x1:a,y1:ya,x2:b,y2:yb,stroke:'#8c9fb3','stroke-width':1,'stroke-opacity':.7,'stroke-dasharray':s.state==='confirmed'?'none':'3 3'}));ends.set(s.end,{price:s.end_price,top:s.direction==='up'});}for(const [i,e]of ends){const xx=x(i),yy=y(e.price);if(!valid([xx,yy])||xx<0||xx>pw)continue;const cy=yy+(e.top?-5:5);g.append(svgElement('path',{d:e.top?`M ${xx-2} ${cy-2} L ${xx+2} ${cy-2} L ${xx} ${cy+2} Z`:`M ${xx-2} ${cy+2} L ${xx+2} ${cy+2} L ${xx} ${cy-2} Z`,fill:'#5d7992'}));}}
       if(S.layers.segments)for(const s of p.segments){const a=x(s.start),b=x(s.end),ya=y(s.start_price),yb=y(s.end_price);if(!valid([a,b,ya,yb]))continue;const color=s.state==='confirmed'?'#2869ad':'#bc791e';g.append(svgElement('line',{x1:a,y1:ya,x2:b,y2:yb,stroke:color,'stroke-width':2.3,'stroke-dasharray':s.state==='confirmed'?'none':'7 4'}));if(b>5&&b<pw-40){g.append(svgElement('circle',{cx:b,cy:yb,r:2.5,fill:'#fff',stroke:color,'stroke-width':1.5}));svgLabel(g,b+5,yb+(s.direction==='up'?-10:15),s.end_price.toFixed(2),color);}}
-      if(S.layers.signals)p.signal_render_stats=SignalChart.draw({group:g,items:annotations,x,y,width:pw,height:h*.83,selected:S.signalSelected,showTimes:$('#signal-show-time').checked,onSelect:selectChartSignal});
+      p.signal_render_stats=S.layers.signals?SignalChart.draw({group:g,items:annotations,x,y,width:pw,height:h*.83,selected:S.signalSelected,showTimes:$('#signal-show-time').checked,onSelect:selectChartSignal}):{visible_markers:0,visible_labels:0};updateSignalVisibility();
       svgLabel(svg,9,h-40,'成交量','#9ba9b6',9);
     }
     chart.timeScale().subscribeVisibleLogicalRangeChange(()=>requestAnimationFrame(draw));
     const resize=()=>{if(container.clientWidth){chart.resize(container.clientWidth,container.clientHeight);requestAnimationFrame(draw);}};
     const observer=new ResizeObserver(resize);observer.observe(container);S.charts.push({chart,candles,svg,draw,resize,observer,p,container,card});requestAnimationFrame(draw);
   });
-  window.chartReady=true;window.workbenchProof=()=>({selected:S.selected,version:'4.0.0',panels:S.charts.map(c=>({period:c.p.period,bars:c.p.bars.length,segments:c.p.segments.length,first:c.p.bars[0]?.date_cn,last:c.p.bars.at(-1)?.date_cn,visible:c.chart.timeScale().getVisibleLogicalRange(),signal_annotations:c.p.visible_signal_annotations?.length||0,signal_render:c.p.signal_render_stats||null})),executionAllowed:false});
+  updateSignalVisibility();window.chartReady=true;window.workbenchProof=()=>({selected:S.selected,version:'4.0.1',panels:S.charts.map(c=>({period:c.p.period,bars:c.p.bars.length,segments:c.p.segments.length,first:c.p.bars[0]?.date_cn,last:c.p.bars.at(-1)?.date_cn,visible:c.chart.timeScale().getVisibleLogicalRange(),signal_annotations:c.p.visible_signal_annotations?.length||0,signal_render:c.p.signal_render_stats||null})),executionAllowed:false});
 }
 
 async function selectPeriod(period,date=null){
@@ -318,3 +319,29 @@ function selectChartSignal(point){S.signalSelected=point.id;$('#signal-picker').
 $('#signal-picker').onchange=()=>{const point=signalObjects().find(p=>p.id===$('#signal-picker').value);if(point)selectChartSignal(point);else{S.signalSelected='';$('#signal-proof-content').replaceChildren();S.charts.forEach(c=>c.draw());}};
 $('#signal-show-invalid').onchange=renderCharts;$('#signal-show-time').onchange=()=>S.charts.forEach(c=>c.draw());
 $('#signal-focus').onclick=()=>{const p=signalObjects().find(p=>p.id===S.signalSelected);if(!p){toast('先选择一项买卖标记');return;}const chart=S.charts.find(c=>c.p.period===p.period);if(!chart)return;const starts=[p.anchor,...p.references.map(r=>r.start),...(p.center?[p.center.start]:[])];const ends=[p.anchor,p.available_at,p.confirmed_index??p.available_at,...p.references.map(r=>r.end)];chart.chart.timeScale().setVisibleLogicalRange({from:Math.min(...starts)-15,to:Math.max(...ends)+15});chart.draw();};
+
+function prepareSignalDisplay(){
+  const all=signalObjects();const display=SignalChart.presentation(all,{period:S.period,rank:S.rank,showInvalid:$('#signal-show-invalid').checked});
+  if(!display.total&&display.ranks.length){S.rank=display.ranks[0];$('#structure-rank').value=String(S.rank);}
+  for(const option of $('#structure-rank').options){const n=all.filter(p=>p.rank===Number(option.value)).length;option.textContent='L'+option.value+(n?'（'+n+'点）':'（0点）');}
+  S.range='signals';S.signalSelected='';
+}
+function updateSignalVisibility(){
+  const target=$('#signal-visibility');if(!target||!S.data?.chart)return;
+  const summary=SignalChart.presentation(signalObjects(),{period:S.period,rank:S.rank,showInvalid:$('#signal-show-invalid').checked});
+  const visible=S.charts.reduce((n,c)=>n+(c.p.signal_render_stats?.visible_markers||0),0);
+  let message=`L${S.rank}：买点 ${summary.buys} 个 · 卖点 ${summary.sells} 个 · 活动候选 ${summary.active} 个 · 历史失效/撤回 ${summary.historical} 个；当前图中 ${visible} 个标记。`;
+  if(!summary.total){message=summary.ranks.length?`当前L${S.rank}没有买卖点；有标记的结构秩：${summary.ranks.map(n=>'L'+n).join('、')}。切换结构秩查看。`:'当前数据尚未形成买卖点，不能画出不存在的信号。可选择其他周期或计算更新后的结构。';}
+  else if(!$('#signal-show-invalid').checked&&!summary.items.length)message+=' 当前标记全部是历史失效点，勾选“显示历史失效点”即可复盘。';
+  else if(!S.layers.signals)message+=' “买卖标记”图层已关闭。';
+  else if(!visible)message+=' 标记位于当前视野之外，点击“最近买卖点”定位。';
+  else if(!summary.active)message+=' 当前显示的是历史复盘点，灰叉表示已失效。';
+  target.textContent=message;target.classList.toggle('empty',!summary.total);
+}
+$('#signal-latest').onclick=()=>{
+  let display=SignalChart.presentation(signalObjects(),{period:S.period,rank:S.rank,showInvalid:$('#signal-show-invalid').checked});
+  if(!display.items.length&&display.total){$('#signal-show-invalid').checked=true;renderCharts();display=SignalChart.presentation(signalObjects(),{period:S.period,rank:S.rank,showInvalid:true});}
+  if(!display.latest){toast('当前周期与结构秩没有可绘制的信号');return;}
+  S.layers.signals=true;document.querySelector('[data-layer="signals"]').checked=true;selectChartSignal(display.latest);
+  const chart=S.charts.find(c=>c.p.period===display.latest.period);if(chart){chart.chart.timeScale().setVisibleLogicalRange(SignalChart.markerRange(display.latest,chart.p.bars.length));chart.draw();}
+};

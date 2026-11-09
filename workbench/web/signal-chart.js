@@ -4,6 +4,21 @@
   const NS='http://www.w3.org/2000/svg';
   const valid=(...v)=>v.every(n=>n!==null&&Number.isFinite(n));
   const intersects=(a,b)=>a.x<b.x+b.width+5&&a.x+a.width+5>b.x&&a.y<b.y+b.height+4&&a.y+a.height+4>b.y;
+  function presentation(items,options={}){
+    const {period='all',rank=1,showInvalid=true}=options;
+    const relevant=items.filter(p=>period==='all'?['day','30m','5m'].includes(p.period):p.period===period);
+    const atRank=relevant.filter(p=>p.rank===rank);
+    const visible=atRank.filter(p=>showInvalid||!['invalidated','withdrawn'].includes(p.state));
+    const historical=atRank.filter(p=>['invalidated','withdrawn'].includes(p.state)).length;
+    const sorted=visible.slice().sort((a,b)=>b.anchor-b.anchor||b.available_at-a.available_at||a.id.localeCompare(b.id));
+    return {items:sorted,total:atRank.length,historical,active:atRank.length-historical,
+      buys:atRank.filter(p=>p.side==='buy').length,sells:atRank.filter(p=>p.side==='sell').length,
+      ranks:[...new Set(relevant.map(p=>p.rank))].sort((a,b)=>a-b),latest:sorted[0]||null};
+  }
+  function markerRange(point,barCount){
+    const center=point.anchor,reference=Math.max(center,point.available_at,point.confirmed_index??0);
+    return {from:Math.max(-2,center-65),to:Math.min(barCount+8,Math.max(center+65,reference+15))};
+  }
   function layoutMarkers(items,width,height){
     const occupied=[],result=[];
     for(const item of items.slice().sort((a,b)=>a.x-b.x||a.id.localeCompare(b.id))){
@@ -59,7 +74,8 @@
         }
       }
     }
-    return {visible_markers:positions.length,visible_labels:labelCount,hidden_dense_labels:positions.length-labelCount,milestones:timeCount};
+    return {visible_markers:positions.length,visible_labels:labelCount,hidden_dense_labels:positions.length-labelCount,milestones:timeCount,
+      buy_markers:positions.filter(p=>p.side==='buy').length,sell_markers:positions.filter(p=>p.side==='sell').length};
   }
-  root.SignalChart={layoutMarkers,draw};
+  root.SignalChart={layoutMarkers,draw,presentation,markerRange};
 })(globalThis);
