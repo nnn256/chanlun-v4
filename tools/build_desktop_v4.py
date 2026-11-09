@@ -43,7 +43,7 @@ def source_entries(root=ROOT):
             if p.is_file() and '__pycache__' not in p.parts and p.suffix in {'.py','.html','.js','.css'}:
                 entries[p.relative_to(root).as_posix()]=p
     for name in ['run_complete.py','run_market_backtest.py','run_v2.py','run.py','history_replay.py','market_scan.py','intraday_scan.py',
-                 '完整算法V3说明.md','V4扫描提醒与全市场回测.md']:
+                 '完整算法V3说明.md','V4扫描提醒与全市场回测.md','V4买卖画图说明.md']:
         entries[name]=root/name
     assets=root/'runs/aoya-v2-chart-20261107/assets'
     for p in assets.iterdir():

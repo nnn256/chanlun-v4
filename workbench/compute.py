@@ -13,6 +13,7 @@ from chanmodel.v2.engine import analyze, multiframe, replay
 from chanmodel.v2.series import validate_multiframe
 from chanmodel.unified import analyze_all,CompleteReplay,DEFAULT_CONFIG
 from chanmodel.release import APP_LABEL
+from chanmodel.signal_chart import attach_chart_annotations
 from .store import ROOT, STATE
 
 NAMES = {'first_buy':'一买候选','second_buy':'二买候选','third_buy':'三买候选',
@@ -44,7 +45,7 @@ def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=
         center = layer['centers'][-1] if layer['centers'] else None
         tail = report['base']['segments'][-1] if report['base']['segments'] else None
         points = [{'time':int(datetime.fromisoformat(b.closed_at).timestamp())+8*3600,
-                   'source_index':b.pos, 'date_cn':local(b.closed_at), 'open':b.open,
+                   'source_index':b.pos,'closed_at':b.closed_at,'is_closed':b.closed, 'date_cn':local(b.closed_at), 'open':b.open,
                    'high':b.high,'low':b.low,'close':b.close,'volume':b.volume} for b in bars[start:]]
         candidates = []
         for s in sorted(report['signals'], key=lambda x:x['anchor'], reverse=True):
@@ -88,6 +89,7 @@ def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=
              'input_sha256':{p:s.input_sha256 for p,s in inputs.items()},'as_of':cutoff,
              'approximation_loss':reports['day'].get('approximation_loss',reports['day'].get('remaining_scope',[])),'strict_original_equivalence_proven':False,
              'snapshot_semantics':'final-cutoff structure; anchors may precede availability'}
+    attach_chart_annotations(chart,combined)
     return chart, summary
 
 

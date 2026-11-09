@@ -72,7 +72,7 @@ def calendar_analysis(code,period,bars,cutoff,digest):
 
 
 def build_panel(period,bars,report,digest,origin='TDX原生周期'):
-    points=[{'time':int(datetime.fromisoformat(b.closed_at).timestamp())+8*3600,'source_index':b.pos,
+    points=[{'time':int(datetime.fromisoformat(b.closed_at).timestamp())+8*3600,'source_index':b.pos,'closed_at':b.closed_at,
         'date_cn':datetime.fromisoformat(b.closed_at).astimezone(CN).strftime('%Y-%m-%d %H:%M'),
         'open':b.open,'high':b.high,'low':b.low,'close':b.close,'volume':b.volume,'is_closed':b.closed} for b in bars]
     report=report or {'base':{'strokes':[],'segments':[]},'hierarchy':{'levels':[]},'signals':[]}

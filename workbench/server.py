@@ -303,6 +303,10 @@ def stock(code, query):
     bundle=json.loads(gzip.decompress(path.read_bytes()))
     from .full_compute import expand_legacy,history_view
     bundle=expand_legacy(bundle)
+    # Rebuild the presentation from saved signal evidence so older V4 results
+    # gain the new annotations without rerunning or modifying their algorithm.
+    from chanmodel.signal_chart import attach_chart_annotations
+    attach_chart_annotations(bundle['chart'],bundle.get('evidence',{}).get('multiframe'))
     if query.get('period'):
         date=query.get('date',[None])[0]
         if date and not re.fullmatch(r'\d{4}-\d{2}-\d{2}',date):raise ValueError('日期必须为YYYY-MM-DD')
@@ -369,7 +373,7 @@ class Handler(BaseHTTPRequestHandler):
                 with connect() as db:
                     rows=[dict(r) for r in db.execute("SELECT i.symbol,u.name,i.error FROM items i JOIN universe u USING(symbol) WHERE job_id=? AND i.state='failed' LIMIT 100",(query.get('job',[''])[0],))]
                 return self.send({'rows':rows})
-            static={'/':'index.html','/app.js':'app.js','/style.css':'style.css'}
+            static={'/':'index.html','/app.js':'app.js','/signal-chart.js':'signal-chart.js','/style.css':'style.css'}
             if path in static:
                 f=WEB/static[path]
             elif path.startswith('/assets/') and path.split('/')[-1] in ('lightweight-charts.standalone.production.js','LICENSE','NOTICE','library-source.json') and path.count('/')==2:
