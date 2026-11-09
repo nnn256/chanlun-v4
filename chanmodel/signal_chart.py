@@ -10,6 +10,7 @@ CN=timezone(timedelta(hours=8))
 LABELS={'first_buy':'一买','second_buy':'二买','third_buy':'三买',
         'first_sell':'一卖','second_sell':'二卖','third_sell':'三卖'}
 STATES={'candidate':'待下级确认','waiting_trigger':'待细级触发','triggered':'模型结构触发',
+        'structure_complete':'本级结构完成·待多周期',
         'invalidated':'已失效','withdrawn':'已撤回','blocked':'缺确认数据'}
 
 
@@ -69,6 +70,10 @@ def build_annotations(panel,links=(),cutoff=None):
         if center and center.get('rank',point['rank'])!=point['rank']:
             rejected.append({'id':ident,'reason':'center_rank_mismatch'});continue
         state='invalidated' if point.get('state')=='invalidated' else 'withdrawn' if point.get('state')=='withdrawn' else 'candidate'
+        rule_audit=point.get('rule_audit') or {};local_at=rule_audit.get('evidence_available_at')
+        local_time=None
+        if state=='candidate' and rule_audit.get('local_geometry_completed') and index_ok(local_at,n) and times[local_at]<=as_of:
+            state='structure_complete';local_time=times[local_at].astimezone(CN).isoformat()
         candidates=[l for l in links if l.get('parent_signal')==ident and l.get('trade_period')==panel['period']
                     and l.get('side')==point['side'] and l.get('rank')==point['rank']]
         # One valid link is evidence of a trigger; a point already invalidated
@@ -85,8 +90,8 @@ def build_annotations(panel,links=(),cutoff=None):
                     state='triggered';confirmed_time=moment.astimezone(CN).isoformat();location=bisect_left(times,moment)
                     confirmed_index=location if location<n and times[location]<=as_of else None
                     proof=copy.deepcopy(link);link_state=link['state'];break
-            if state=='candidate' and link['state']=='waiting_trigger':state='waiting_trigger';link_state=link['state']
-            elif state=='candidate' and link['state'].startswith('blocked'):state='blocked';link_state=link['state']
+            if state in {'candidate','structure_complete'} and link['state']=='waiting_trigger':state='waiting_trigger';link_state=link['state']
+            elif state in {'candidate','structure_complete'} and link['state'].startswith('blocked'):state='blocked';link_state=link['state']
         references=[]
         terminal=evidence_range('末端运动',point.get('terminal_range'),ident)
         if terminal:references.append(terminal)
@@ -110,6 +115,7 @@ def build_annotations(panel,links=(),cutoff=None):
                 'anchor':anchor,'anchor_time':times[anchor].astimezone(CN).isoformat(),'price':point['price'],
                 'available_at':available,'available_time':times[available].astimezone(CN).isoformat(),'available_price':bars[available]['close'],
                 'delay_bars':available-anchor,'confirmed_time':confirmed_time,'confirmed_index':confirmed_index,
+                'local_completed_time':local_time,
                 'confirmed_price':bars[confirmed_index]['close'] if confirmed_index is not None else None,
                 'invalidation':point['invalidation'],'invalidation_operator':point.get('invalidation_operator','le' if point['side']=='buy' else 'ge'),
                 'center':{k:center[k] for k in ['id','rank','start','end','zd','zg'] if k in center} if center else None,
@@ -117,6 +123,12 @@ def build_annotations(panel,links=(),cutoff=None):
                 'link_state':link_state,'confirmation_evidence':proof,'original_signal':copy.deepcopy(point),
                 'definition_mode':point.get('definition_mode','declared_structural_profile'),
                 'availability_semantics':'structural evidence index; first observed time requires causal event replay',
+                'decomposition_end':point.get('decomposition_end',anchor),
+                'rule_audit':copy.deepcopy(point.get('rule_audit')),
+                'anchor_correction':copy.deepcopy(point.get('saved_original_point')),
+                'invalidated_at':point.get('invalidated_at'),
+                'invalidated_time':times[point['invalidated_at']].astimezone(CN).isoformat() if index_ok(point.get('invalidated_at'),n) else None,
+                'invalidated_price':(bars[point['invalidated_at']]['low'] if point['side']=='buy' else bars[point['invalidated_at']]['high']) if index_ok(point.get('invalidated_at'),n) else None,
                 'execution_allowed':False}
         result.append(marker)
     return {'version':'signal-chart.v1','objects':sorted(result,key=lambda x:(x['anchor'],x['rank'],x['class'])),
@@ -127,5 +139,8 @@ def attach_chart_annotations(chart,multiframe=None):
     multi=multiframe or {};links=multi.get('signals',[])
     if isinstance(multi.get('complete_links'),dict):links=multi['complete_links'].get('selected_signals',multi['complete_links'].get('signals',links))
     for panel in chart.get('panels',[]):
+        if panel.get('kline_audit',{}).get('state')=='invalid':
+            panel['signal_chart']={'version':'signal-chart.v1','objects':[],'rejected':[{'id':'raw-data','reason':'invalid_raw_kline'}]}
+            continue
         panel['signal_chart']=build_annotations(panel,links,chart.get('as_of'))
     return chart

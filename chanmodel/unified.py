@@ -11,7 +11,7 @@ from .complete_study import analyze_complete, SIGNAL_NAMES
 from .complete_multilevel import analyze_links, join_triple
 from .v2.series import Series, CN, PERIODS, session_closes, derive_series
 
-PROFILE = 'chanlun_unified_complete_study_v3'
+PROFILE = 'chanlun_unified_complete_study_extrema_v4_2'
 DEFAULT_CONFIG = Config(stroke_mode='strict',second_policy='original_101',macd_multiplier=2.0)
 
 

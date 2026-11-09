@@ -10,6 +10,7 @@ from chanmodel.unified import DEFAULT_CONFIG
 from chanmodel.release import APP_LABEL
 from chanmodel.complete_multilevel import analyze_links
 from chanmodel.signal_chart import attach_chart_annotations
+from chanmodel.kline_audit import repair_signal_anchors
 from chanmodel.v2.io import load_series
 from .history import load_capture,build_panel,LABELS,NATIVE,timeshare_panel
 from .store import ROOT,STATE,connect,publish_result
@@ -43,6 +44,7 @@ def bundle_capture(record,folder,cutoff,tolerance=100,progress=None):
     coverage.append({'period':'auction','label':'竞价历史','status':'unsupported','count':0,'reason':'TDX接口未提供历史竞价快照，未用开盘后分钟K线替代'})
     summary.update(mode='full',volume_tolerance=tolerance,data_received_at=acquisition.get('finished_at',acquisition['requested_at']),history_coverage=coverage)
     chart.update(history_coverage=coverage,history_complete_in_chart=True)
+    repair_signal_anchors({'chart':chart,'evidence':{'reports':reports}})
     attach_chart_annotations(chart,combined)
     return {'summary':summary,'chart':chart,'history_root':str(folder.relative_to(ROOT)),
             'evidence':{'reports':reports,'default_contract':default,'multiframe':{k:v for k,v in combined.items() if k!='levels'},'source_receipts':acquisition['periods']}}

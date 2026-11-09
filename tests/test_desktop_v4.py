@@ -41,7 +41,7 @@ class DesktopV4Tests(unittest.TestCase):
 
     def test_distribution_is_v4_and_every_live_algorithm_file_is_selected(self):
         entries=builder.source_entries()
-        self.assertEqual((APP_VERSION,APP_LABEL),('4.0.1','V4'))
+        self.assertEqual((APP_VERSION,APP_LABEL),('4.0.2','V4'))
         for p in (ROOT/'chanmodel').rglob('*.py'):
             if '__pycache__' not in p.parts:self.assertEqual(entries[p.relative_to(ROOT).as_posix()],p)
         self.assertIn('chanmodel/unified.py',entries)

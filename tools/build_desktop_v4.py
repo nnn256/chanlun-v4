@@ -43,19 +43,20 @@ def source_entries(root=ROOT):
             if p.is_file() and '__pycache__' not in p.parts and p.suffix in {'.py','.html','.js','.css'}:
                 entries[p.relative_to(root).as_posix()]=p
     for name in ['run_complete.py','run_market_backtest.py','run_v2.py','run.py','history_replay.py','market_scan.py','intraday_scan.py',
-                 '完整算法V3说明.md','V4扫描提醒与全市场回测.md','V4买卖画图说明.md']:
+                 '完整算法V3说明.md','V4扫描提醒与全市场回测.md','V4买卖画图说明.md','V4原始K线与买卖点核验说明.md']:
         entries[name]=root/name
     assets=root/'runs/aoya-v2-chart-20261107/assets'
     for p in assets.iterdir():
         if p.is_file():entries[p.relative_to(root).as_posix()]=p
     entries['runs/tdx-all-a-20261106/universe.json']=Path(os.environ.get('CHANLUN_V4_UNIVERSE',str(root/'runs/tdx-all-a-20261106/universe.json')))
     entries['runtime/tdx-api-revised.exe']=root/'runtime/tdx-api-revised.exe'
-    for symbol in ['sz300949','sz000001','sh600519','bj920002','sh600531','sh600000','sz000002','sh600419','sz000529']:
+    for symbol in ['sz300949','sz000001','sh600519','bj920002','sh600531','sh600000','sz000002','sh600419','sz000529','bj920010']:
         for period in ['day','minute30','minute5']:
             suffix='.csv' if period=='day' else '.csv.gz'
             paths=[f'market_data/tdx/{period}/ohlcv/{symbol}{suffix}',f'market_data/tdx/{period}/metadata/{symbol}.json']
-            if all((root/name).is_file() for name in paths):
-                for name in paths:entries[name]=root/name
+            cache_root=Path(os.environ.get('CHANLUN_V4_CACHE_ROOT',str(root)))
+            if all((cache_root/name).is_file() for name in paths):
+                for name in paths:entries[name]=cache_root/name
     return entries
 
 
@@ -68,7 +69,7 @@ from workbench.compute import process_stock
 from chanmodel.tdx_data import now_iso
 from chanmodel.release import APP_LABEL
 seed();results=[]
-for symbol in ['sz300949','sz000001','sh600000','bj920002','sh600419','sz000529']:
+for symbol in ['sz300949','sz000001','sh600000','bj920002','sh600419','sz000529','bj920010']:
     with connect() as db:record=dict(db.execute('SELECT * FROM universe WHERE symbol=?',(symbol,)).fetchone())
     result=process_stock(record,{'mode':'day','refresh':False,'cutoff':'2026-11-05T15:00:00+08:00','volume_tolerance':1},'bundled-v4')
     assert result['state']=='success',result

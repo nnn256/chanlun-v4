@@ -89,6 +89,8 @@ def make_signals(units,centers,comparisons,bars,rank,histogram=None,*,second_pol
                'center_definition_predicate_passed':center['certificate']['passed'],
                'lower_level_trigger':'missing','execution_allowed':False,
                'second_policy':second_policy,'third_boundary':third_boundary,**evidence}
+        from ..signal_anchor import align_signal
+        align_signal(point,bars)
         signals.append(point);return point
 
     for center in centers:

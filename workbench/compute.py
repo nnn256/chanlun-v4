@@ -14,6 +14,7 @@ from chanmodel.v2.series import validate_multiframe
 from chanmodel.unified import analyze_all,CompleteReplay,DEFAULT_CONFIG
 from chanmodel.release import APP_LABEL
 from chanmodel.signal_chart import attach_chart_annotations
+from chanmodel.kline_audit import repair_signal_anchors
 from .store import ROOT, STATE
 
 NAMES = {'first_buy':'一买候选','second_buy':'二买候选','third_buy':'三买候选',
@@ -89,6 +90,7 @@ def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=
              'input_sha256':{p:s.input_sha256 for p,s in inputs.items()},'as_of':cutoff,
              'approximation_loss':reports['day'].get('approximation_loss',reports['day'].get('remaining_scope',[])),'strict_original_equivalence_proven':False,
              'snapshot_semantics':'final-cutoff structure; anchors may precede availability'}
+    repair_signal_anchors({'chart':chart,'evidence':{'reports':reports}})
     attach_chart_annotations(chart,combined)
     return chart, summary
 

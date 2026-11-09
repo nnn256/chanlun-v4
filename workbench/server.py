@@ -6,6 +6,8 @@ import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import mimetypes
+import csv
+import io
 import os
 from pathlib import Path
 import re
@@ -303,6 +305,8 @@ def stock(code, query):
     bundle=json.loads(gzip.decompress(path.read_bytes()))
     from .full_compute import expand_legacy,history_view
     bundle=expand_legacy(bundle)
+    from chanmodel.kline_audit import repair_signal_anchors
+    repair_signal_anchors(bundle)
     # Rebuild the presentation from saved signal evidence so older V4 results
     # gain the new annotations without rerunning or modifying their algorithm.
     from chanmodel.signal_chart import attach_chart_annotations
@@ -366,6 +370,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send({'quote':quotes[0],'received_at':receipt['received_at'],'freshness':'获取时间不等于成交时间，休市时可能为最后交易日报价'})
             if path=='/api/stocks':return self.send(market(query))
             if path.startswith('/api/stock/'):return self.send(stock(path.rsplit('/',1)[1],query))
+            if path.startswith('/api/kline-csv/'):
+                code=path.rsplit('/',1)[1];data=stock(code,query)
+                if not data.get('available'):return self.send({'error':'当前股票没有可导出的K线'},404)
+                panel=data.get('panel') or next((p for p in data['chart']['panels'] if p['period']==query.get('period',['day'])[0]),None)
+                if not panel or panel.get('kind')=='line':raise ValueError('所选数据不是OHLC K线')
+                stream=io.StringIO(newline='');fields=['closed_at','open','high','low','close','volume','is_closed','source_index']
+                writer=csv.DictWriter(stream,fieldnames=fields);writer.writeheader()
+                for bar in panel['bars']:
+                    row={key:bar.get(key) for key in fields};row['closed_at']=bar.get('closed_at') or datetime.fromisoformat(bar['date_cn']).replace(tzinfo=CN).isoformat()
+                    row['is_closed']=str(bar.get('is_closed',True)).lower();writer.writerow(row)
+                return self.send(stream.getvalue().encode('utf-8-sig'),content_type='text/csv; charset=utf-8')
+            if path.startswith('/api/kline-audit/'):
+                code=path.rsplit('/',1)[1];parameters={**query,'full':['1']};data=stock(code,parameters)
+                if not data.get('available'):return self.send(data)
+                from chanmodel.kline_audit import verify_source
+                period=query.get('audit_period',['day'])[0]
+                panel=next((p for p in data['chart']['panels'] if p['period']==period),None)
+                if panel is None:raise ValueError('没有保存所选周期的K线')
+                receipt=data.get('evidence',{}).get('source_receipts',{}).get(period)
+                result=verify_source(panel,receipt,code,ROOT,data['chart'].get('as_of',data['summary']['as_of']))
+                result['anchor_corrections']=panel.get('anchor_corrections',[])
+                return self.send(result)
             if path=='/api/health':
                 from .store import DB
                 return self.send({'service':'chanlun-workbench-v1','status':'ok','instance':hashlib.sha256(str(ROOT).encode()).hexdigest()[:16],'desktop':bool(getattr(sys,'frozen',False)),'version':APP_VERSION,'release':APP_LABEL,'features':['signal_chart_v1','marker_visibility_v2'],'pid':os.getpid(),'database':str(DB)})

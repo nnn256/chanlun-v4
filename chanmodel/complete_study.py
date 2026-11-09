@@ -180,6 +180,11 @@ def analyze_complete(symbol,period,bars,cutoff,input_sha256,*,source='tdx',adjus
                     {'key':'signals','name':'六类点及101回试','count':len(all_signals)},
                     {'key':'monitor','name':'92课中枢震荡监视器','count':sum(len(x['points']) for x in monitors)},
                     {'key':'construction','name':'108课顶底构造','count':len(phases)}])
+    from .causal_replay import source_rule_audit
+    base['as_of_index']=len(selected)-1
+    base['signal_anchor_profile']='raw_terminal_extremum_v1'
+    for point in all_signals:
+        point['rule_audit']=source_rule_audit(point,base)
     return base
 
 

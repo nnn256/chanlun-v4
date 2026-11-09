@@ -40,7 +40,7 @@
     const append=(tag,attrs,text)=>{const el=node(tag,attrs,text);group.appendChild(el);return el;};
     const label=(px,py,text,color)=>append('text',{x:px,y:py,fill:color,'font-size':10,'font-family':'Microsoft YaHei, sans-serif',stroke:'#fff','stroke-width':3,'paint-order':'stroke'},text);
     const visible=items.map(p=>({id:p.id,point:p,x:x(p.anchor),y:y(p.price),side:p.side,
-      label:p.label+(p.state==='triggered'?'·触发':p.state==='invalidated'?'·失效':p.state==='withdrawn'?'·撤回':'·候选')}))
+      label:p.label+(p.state==='triggered'?'·触发':p.state==='invalidated'?'·失效':p.state==='withdrawn'?'·撤回':p.state==='structure_complete'?'·本级完成':'·候选')}))
       .filter(p=>valid(p.x,p.y)&&p.x>=0&&p.x<=width&&p.y>=0&&p.y<height);
     const chosen=items.find(p=>p.id===selected);
     if(chosen){
