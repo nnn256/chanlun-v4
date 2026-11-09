@@ -1,0 +1,30 @@
+{
+  "total_current_universe": 5580,
+  "saved_results": 5579,
+  "audited": 5579,
+  "passed": 5579,
+  "needs_review": 0,
+  "failed": 0,
+  "unavailable_symbols": [
+    "sh688827"
+  ],
+  "raw_kline_rows": 17073625,
+  "original_response_rows_matched": 17073625,
+  "signal_positions_corrected": 7176,
+  "wrong_extrema_remaining": 0,
+  "seconds": 518.0,
+  "complete": true,
+  "anchor_indices_corrected": 7176,
+  "prices_corrected": 7036,
+  "states_corrected": 0,
+  "invalidation_boundaries_corrected": 0,
+  "signal_classes": {
+    "third_buy": 9146,
+    "third_sell": 14213,
+    "first_buy": 578,
+    "second_buy": 476,
+    "first_sell": 33,
+    "second_sell": 20
+  },
+  "precision_scope": "OHLCV matched saved provider response/CSV and pivot extrema; not universal original-Chan equivalence or independent exchange tick accuracy"
+}
