@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>画线复习 · 一小时漫画缠论实战法</title>
+<style>
+:root{--paper:#f6f4ee;--panel:#fffefa;--ink:#21342f;--muted:#66756d;--line:#d9dfd6;--up:#be503b;--down:#34816a;--segment:#3c5f91;--zone:#ba8c35}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.65 'Microsoft YaHei','PingFang SC',sans-serif}main{max-width:1320px;margin:auto;padding:38px 36px 50px}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:25px}.eyebrow{font-size:12px;letter-spacing:2px;color:var(--down)}h1{font:600 clamp(27px,4vw,42px)/1.25 'Microsoft YaHei',sans-serif;margin:10px 0}h2{font-size:18px;margin:0 0 12px}p{margin:8px 0;color:var(--muted);text-wrap:pretty}.source{border:1px solid var(--line);padding:8px 14px;border-radius:3px;font-size:12px;max-width:300px}.summary{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:24px}.stat{padding:14px 18px;border-right:1px solid var(--line)}.stat:last-child{border:0}.stat span{display:block;color:var(--muted);font-size:12px}.stat strong{font:500 28px/1.4 Consolas,monospace}.panel{background:var(--panel);border:1px solid var(--line);padding:20px;margin-bottom:20px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}.layers{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}.layers label{cursor:pointer}input{accent-color:var(--down)}.legend{font-size:12px;color:var(--muted);margin:10px 0}.dot{display:inline-block;width:16px;height:3px;margin:0 5px 3px 12px;background:var(--segment)}svg{display:block;width:100%;height:auto;min-height:240px}button{background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:7px 13px;border-radius:3px;cursor:pointer;font:inherit;font-size:13px}button:hover{background:#eaf0e8}button:active{transform:translateY(1px)}button:disabled{opacity:.4;cursor:default}button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--segment);outline-offset:3px}.controls{display:flex;align-items:center;gap:8px;margin-top:15px;flex-wrap:wrap}input[type=range]{flex:1;min-width:130px}.cutoff{font-size:12px;font-family:Consolas,'Microsoft YaHei',monospace;min-width:80px;text-align:right}.caption{font-size:12px;margin-top:10px;color:var(--muted)}.lower{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}.table-wrap{overflow:auto;max-height:300px}table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:400;position:sticky;top:0;background:var(--panel)}.events{font-size:12px;max-height:300px;overflow:auto}.event{padding:8px 0;border-bottom:1px solid var(--line)}.event code{color:var(--segment)}.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.note{padding-top:15px;border-top:2px solid var(--line)}.note b{font-size:15px}.note p{font-size:13px}.practice{margin-top:26px}details{border-top:1px solid var(--line);padding:12px 0}summary{cursor:pointer;font-size:14px}details p{font-size:13px;padding:0 20px}footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:25px;padding-top:15px;overflow-wrap:anywhere}code{font-family:Consolas,monospace}.empty{color:var(--muted);padding:20px 0}
+@media(max-width:760px){main{padding:22px 16px}header{display:block}.source{margin-top:15px;max-width:none}.summary{grid-template-columns:repeat(2,1fr)}.stat{border-bottom:1px solid var(--line)}.lower,.notes{grid-template-columns:1fr}.panel{padding:14px}.layers{gap:10px}svg{min-height:190px}.cutoff{font-size:11px}.toolbar h2{margin:0}}
+</style>
+</head>
+<body><main>
+<header><div><div class="eyebrow">读书 / 结构练习 / 逐根回放</div><h1>先看结构，再落一笔。</h1><p>《一小时漫画缠论实战法》画线复习 · 拖动时间，观察确认怎样发生。</p></div><div class="source" id="source"></div></header>
+<section class="summary" aria-label="当前结构数量"><div class="stat"><span>分型</span><strong id="n-fractals">0</strong></div><div class="stat"><span>笔 · 含末笔候选</span><strong id="n-strokes">0</strong></div><div class="stat"><span>线段 · 含候选</span><strong id="n-segments">0</strong></div><div class="stat"><span>线段中枢代理</span><strong id="n-centers">0</strong></div></section>
+<section class="panel"><div class="toolbar"><h2>只看截止时点以前的证据</h2><div class="layers" id="layers"><label><input type="checkbox" data-layer="bars" checked>原始K线</label><label><input type="checkbox" data-layer="merged">包含后区间</label><label><input type="checkbox" data-layer="fractals">分型</label><label><input type="checkbox" data-layer="strokes" checked>笔</label><label><input type="checkbox" data-layer="segments" checked>线段</label><label><input type="checkbox" data-layer="centers" checked>中枢</label></div></div>
+<div class="legend">红：向上笔　绿：向下笔<span class="dot"></span>蓝：线段　虚线：待确认　浅金框：中枢核心　悬停查看对象与确认依据</div>
+<svg id="chart" viewBox="0 0 1160 430" role="img" aria-label="截止时点K线、笔、线段与中枢图"></svg>
+<div class="controls"><button id="first" aria-label="回到第一根">起点</button><button id="prev" aria-label="上一根">←</button><button id="play">播放</button><button id="next" aria-label="下一根">→</button><button id="last">末尾</button><input id="cut" aria-label="回放截止K线" type="range" min="0" step="1"><output id="cut-label" class="cutoff"></output></div><div id="time" class="caption"></div>
+<div class="caption">图形取当前前缀重新计算；实线表示此版本已有确认依据，后续仍可能修订。下方记录保留历史变化。左右方向键逐根查看。</div></section>
+<div class="lower"><section class="panel"><h2>最近结构的端点与依据</h2><p class="caption">编号从0开始；“画在何处”和“何时知道”分别记录。</p><div class="table-wrap"><table><thead><tr><th>对象</th><th>端点/区间</th><th>当前状态</th><th>依据K线</th><th>版本可见于</th></tr></thead><tbody id="objects"></tbody></table></div></section><section class="panel"><h2>这一步改变了什么</h2><p class="caption">最近8项笔、线段、中枢事件，按观测时间记录。</p><div class="events" id="events"></div></section></div>
+<section class="notes"><div class="note"><b>01 / 五根，还是七根？</b><p>分型中心1到5含端点为5根。完整底分型是0—2，顶分型是4—6，独立K线是3；完整支撑窗口共有7根。包含后再数。</p></div><div class="note"><b>02 / 三笔只是起步</b><p>首三笔重叠只建立候选段。书中略过特征序列细则，此图借用现有研究引擎的确认路径；不会每三笔机械切一段。</p></div><div class="note"><b>03 / 核心不等于终结</b><p>前三个主体构件交集给出ZG/ZD，离开后仍要看回试。触边算返回。图中只用已确认线段构造中枢代理。</p></div></section>
+<section class="practice"><h2>合上书，试着回答</h2><details><summary>01　区间[10,18]与[12,20]需要包含合并吗？</summary><p>不需要。它们只是部分交叠，没有任何一根完全包含另一根。</p></details><details><summary>02　两个分型中心编号2与5，能按本次严格口径成笔吗？</summary><p>不能。中心差3，两个完整分型间没有独立K线；本次要求中心差至少4。</p></details><details><summary>03　高点在第100根，第112根才确认，该把确认记在哪里？</summary><p>端点画在100，观测到确认记在112。回测不能在100就使用112才获得的证据。</p></details><details><summary>04　向上离开ZG=7，已确认回试最低价正好7，算未返回吗？</summary><p>不算。本次工程约定等号为触边返回；严格大于7才是未返回。</p></details></section>
+<footer id="footer"></footer>
+</main><script id="study-data" type="application/json">__STUDY_DATA__</script><script>
+'use strict';
+const data=JSON.parse(document.getElementById('study-data').textContent);
+const $=id=>document.getElementById(id), svg=$('chart'), slider=$('cut');
+const NS='http://www.w3.org/2000/svg', palette={up:'#be503b',down:'#34816a',segment:'#3c5f91',zone:'#ba8c35',muted:'#66756d',line:'#d9dfd6'};
+let index=data.frames.length-1,timer=null;
+slider.max=String(index);slider.value=String(index);
+$('source').textContent=(data.manifest.source.synthetic?'合成教学数据 · 非真实行情':'用户CSV · '+data.manifest.level)+' / '+data.bars.length+' 根 / 结构代理';
+$('footer').textContent='来源：管鹏《一小时漫画缠论实战法》，2022。画笔依第2章，线段终结采用既有公开规则补充。模式：structure_proxy。输入摘要：'+data.manifest.used_bars_sha256+'。本页离线运行。';
+function el(tag,attrs={},label){const node=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))node.setAttribute(k,String(v));if(label!==undefined)node.textContent=String(label);svg.appendChild(node);return node;}
+function titled(node,text){const t=document.createElementNS(NS,'title');t.textContent=text;node.appendChild(t);return node;}
+function enabled(name){return document.querySelector('[data-layer="'+name+'"]').checked;}
+function fmt(n){return Number(n).toFixed(2);}
+function state(s){return({confirmed:'已确认',provisional:'待确认',closed_basis:'闭合K线依据',open_basis:'未闭合依据',formed:'核心已形成',extension:'延伸',leaving:'离开待回试',departed:'已取得不返回依据'})[s]||s;}
+function desc(o){return o.id+' / '+state(o.state)+' / basis_at='+o.basis_at+' / available_at='+o.available_at+' / revision='+o.revision;}
+function stop(){if(timer!==null)clearInterval(timer);timer=null;$('play').textContent='播放';}
+function render(){
+ const frame=data.frames[index],bars=data.bars.slice(0,index+1);slider.value=String(index);svg.replaceChildren();
+ for(const k of ['fractals','strokes','segments','centers'])$('n-'+k).textContent=String(frame[k].length);
+ $('cut-label').textContent=(index+1)+' / '+data.bars.length;
+ $('time').textContent='截止收盘：'+(frame.as_of_time||'无收盘时间，按输入位置回放')+'　|　原始编号：'+index+'　|　标准区间：'+frame.merged.length;
+ $('first').disabled=$('prev').disabled=index===0;$('last').disabled=$('next').disabled=index===data.frames.length-1;
+ const W=1160,H=430,L=58,R=24,T=22,B=38,pw=W-L-R,ph=H-T-B;
+ let lo=Math.min(...bars.map(b=>b.low)),hi=Math.max(...bars.map(b=>b.high));const pad=Math.max((hi-lo)*.12,.5);lo-=pad;hi+=pad;
+ const x=i=>L+(i+.5)*pw/Math.max(bars.length,8), y=p=>T+(hi-p)*ph/(hi-lo);
+ for(let k=0;k<=5;k++){const p=lo+(hi-lo)*k/5;el('line',{x1:L,x2:W-R,y1:y(p),y2:y(p),stroke:palette.line,'stroke-width':.7});el('text',{x:L-10,y:y(p)+4,'text-anchor':'end',fill:palette.muted,'font-size':11},fmt(p));}
+ if(enabled('centers'))for(const c of frame.centers){const left=x(c.start),right=x(c.end);titled(el('rect',{x:left,y:y(c.zg),width:Math.max(right-left,2),height:Math.max(y(c.zd)-y(c.zg),1),fill:palette.zone,'fill-opacity':.10,stroke:palette.zone,'stroke-opacity':.6}),desc(c)+' / ZD='+c.zd+' ZG='+c.zg);el('text',{x:left+5,y:y(c.zg)-5,fill:palette.zone,'font-size':10},'ZG '+fmt(c.zg)+' / ZD '+fmt(c.zd));}
+ if(enabled('bars'))for(const b of bars){const color=b.close>=b.open?palette.up:palette.down;const width=Math.max(.7,Math.min(6,pw/bars.length*.52));titled(el('line',{x1:x(b.pos),x2:x(b.pos),y1:y(b.high),y2:y(b.low),stroke:color,'stroke-opacity':.45,'stroke-width':Math.max(1,width*.35)}),'K '+b.pos+' / H '+b.high+' / L '+b.low);el('rect',{x:x(b.pos)-width/2,y:Math.min(y(b.open),y(b.close)),width,height:Math.max(Math.abs(y(b.open)-y(b.close)),1.5),fill:color,'fill-opacity':.5});}
+ if(enabled('merged'))for(const b of frame.merged)titled(el('rect',{x:x(b.start)-2,y:y(b.high),width:Math.max(x(b.end)-x(b.start)+4,4),height:Math.max(y(b.low)-y(b.high),1),fill:'none',stroke:palette.muted,'stroke-width':1}),b.id+' / 原始 '+b.start+'—'+b.end+' / H '+b.high+' L '+b.low);
+ for(const layer of ['strokes','segments'])if(enabled(layer))for(const o of frame[layer]){const seg=layer==='segments',color=seg?palette.segment:palette[o.direction];titled(el('line',{x1:x(o.start),x2:x(o.end),y1:y(o.start_price),y2:y(o.end_price),stroke:color,'stroke-width':seg?3.2:1.5,'stroke-dasharray':o.state==='confirmed'?'none':'6 5','stroke-linecap':'round'}),desc(o)+(o.path?' / '+o.path:''));}
+ if(enabled('fractals'))for(const f of frame.fractals){const top=f.kind==='top',px=x(f.source),py=y(f.price)+(top?-9:9);titled(el('path',{d:top?`M ${px} ${py+4} l -4 -7 h 8 Z`:`M ${px} ${py-4} l -4 7 h 8 Z`,fill:top?palette.up:palette.down}),desc(f));}
+ const step=Math.max(1,Math.ceil(bars.length/7));for(let i=0;i<bars.length;i+=step)el('text',{x:x(i),y:H-13,'text-anchor':'middle',fill:palette.muted,'font-size':11},i);
+ if(bars.length<3)el('text',{x:W/2,y:H/2,'text-anchor':'middle',fill:palette.muted,'font-size':14},'继续逐根读入，等待右侧确认与结构形成');
+ const body=$('objects');body.replaceChildren();const rows=[...frame.strokes.slice(-3).map(o=>['笔',o]),...frame.segments.slice(-2).map(o=>['线段',o]),...frame.centers.slice(-2).map(o=>['中枢',o])];
+ for(const[name,o]of rows){const tr=document.createElement('tr');for(const v of[name,o.start+' → '+o.end,state(o.state),o.basis_at,o.available_at]){const td=document.createElement('td');td.textContent=String(v);tr.appendChild(td);}body.appendChild(tr);}
+ if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.className='empty';td.textContent='当前还没有可连接的结构。';tr.appendChild(td);body.appendChild(tr);}
+ const events=$('events');events.replaceChildren();const recent=data.events.filter(e=>e.observed_at<=index&&['stroke','segment:0','center:0'].includes(e.kind)).slice(-8).reverse();
+ for(const e of recent){const div=document.createElement('div');div.className='event';const code=document.createElement('code');code.textContent='K '+e.observed_at+' / '+e.event;div.appendChild(code);div.appendChild(document.createTextNode('　'+e.id));events.appendChild(div);}if(!recent.length){events.textContent='当前尚无笔、线段或中枢事件。';}
+}
+function go(n){index=Math.max(0,Math.min(data.frames.length-1,n));render();}
+slider.addEventListener('input',()=>{stop();go(Number(slider.value));});
+$('first').onclick=()=>{stop();go(0);};$('last').onclick=()=>{stop();go(data.frames.length-1);};$('prev').onclick=()=>{stop();go(index-1);};$('next').onclick=()=>{stop();go(index+1);};
+$('play').onclick=()=>{if(timer!==null){stop();return;}if(index===data.frames.length-1)go(0);$('play').textContent='暂停';timer=setInterval(()=>{go(index+1);if(index===data.frames.length-1)stop();},200);};
+$('layers').addEventListener('change',render);document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();stop();go(index+(e.key==='ArrowRight'?1:-1));}});render();
+</script></body></html>

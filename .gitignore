@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+market_data/
+runtime/
+artifacts/
+*.sqlite3*
+*.exe
+*.zip
+runs/*
+!runs/aoya-v2-chart-20261107/
+runs/aoya-v2-chart-20261107/*
+!runs/aoya-v2-chart-20261107/assets/
