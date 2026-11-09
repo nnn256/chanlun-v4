@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime,timezone,timedelta
 import hashlib
+import gzip
 import json
 import os
 from pathlib import Path
@@ -21,6 +22,18 @@ PYTHON=ROOT/'artifacts/exe-build-20261108/build-env/Scripts/python.exe'
 
 
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def portable_value(value):
+    if isinstance(value,dict):return {k:portable_value(v) for k,v in value.items()}
+    if isinstance(value,list):return [portable_value(v) for v in value]
+    if isinstance(value,str):
+        normalized=value.replace('\\','/')
+        if (len(normalized)>3 and normalized[1:3]==':/') or normalized.startswith('/Users/') or normalized.startswith('/home/'):
+            for folder in ['market_data/','runtime/','runs/']:
+                if '/'+folder in normalized:return folder+normalized.split('/'+folder,1)[1]
+            return '<local_path_omitted>'
+    return value
 
 
 def source_entries(root=ROOT):
@@ -89,6 +102,13 @@ def make_seed():
     p=subprocess.run([str(PYTHON),'-c',SEED_SCRIPT],cwd=project,env=env,capture_output=True,encoding='utf-8',errors='replace')
     (OUT/'seed.stdout.txt').write_text(p.stdout,encoding='utf-8');(OUT/'seed.stderr.txt').write_text(p.stderr,encoding='utf-8')
     if p.returncode:raise RuntimeError('V4 sample computation failed; see seed.stderr.txt')
+    for path in project.rglob('*'):
+        if path.suffix=='.json':
+            value=json.loads(path.read_text(encoding='utf-8'))
+            path.write_text(json.dumps(portable_value(value),ensure_ascii=False,indent=2),encoding='utf-8')
+        elif path.name.endswith('.json.gz'):
+            value=json.loads(gzip.decompress(path.read_bytes()))
+            path.write_bytes(gzip.compress(json.dumps(portable_value(value),ensure_ascii=False,allow_nan=False,separators=(',',':')).encode(),mtime=0))
     resources=OUT/'resources';resources.mkdir(exist_ok=True)
     files={p.relative_to(project).as_posix():p for p in project.rglob('*') if p.is_file() and '__pycache__' not in p.parts
            and not p.name.endswith(('-wal','-shm'))}

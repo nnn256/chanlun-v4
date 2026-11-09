@@ -8,6 +8,8 @@
   "all_securities_successful": false,
   "bars": 17062482,
   "signals": 2826,
+  "oldest_last_bar": "2026-11-05T07:00:00+00:00",
+  "newest_last_bar": "2026-11-09T07:00:00+00:00",
   "completed_trades": 875,
   "zero_trade_securities": 4864,
   "mean_independent_account_return": -0.0017915020366373908,

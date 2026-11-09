@@ -16,6 +16,15 @@ builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
 
 
 class DesktopV4Tests(unittest.TestCase):
+    def test_public_seed_paths_are_portable_and_hashes_remain_intact(self):
+        value={'file':'C:/Users/fixture/project/market_data/tdx/day/abc.csv',
+               'raw_path':'C:\\Users\\fixture\\private\\unknown.json','csv_sha256':'0123',
+               'relative':'runtime/results/example.json'}
+        result=builder.portable_value(value)
+        self.assertEqual(result['file'],'market_data/tdx/day/abc.csv')
+        self.assertEqual(result['raw_path'],'<local_path_omitted>')
+        self.assertEqual(result['csv_sha256'],'0123')
+        self.assertEqual(result['relative'],value['relative'])
     def resources(self,folder):
         folder.mkdir()
         code=b"VERSION='4.0.0'\n";page=b'<title>V4</title>'

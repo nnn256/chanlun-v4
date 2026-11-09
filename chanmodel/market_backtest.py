@@ -65,6 +65,8 @@ def aggregate(rows,total):
     return {'profile':PROFILE,'total':total,'completed':len(good),'failed':len(failed),'remaining':total-len(rows),
             'coverage_complete':len(rows)==total,'all_securities_successful':len(good)==total,
             'bars':sum(r['bars'] for r in good),'signals':sum(r['confirmations'] for r in good),
+            'oldest_last_bar':min((r['last_close'] for r in good if r.get('last_close')),default=None),
+            'newest_last_bar':max((r['last_close'] for r in good if r.get('last_close')),default=None),
             'completed_trades':sum(m['completed_trades'] for m in metrics),'zero_trade_securities':sum(m['completed_trades']==0 for m in metrics),
             'mean_independent_account_return':statistics.fmean(returns) if returns else None,
             'median_independent_account_return':statistics.median(returns) if returns else None,
