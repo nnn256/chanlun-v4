@@ -305,8 +305,8 @@ def stock(code, query):
     bundle=json.loads(gzip.decompress(path.read_bytes()))
     from .full_compute import expand_legacy,history_view
     bundle=expand_legacy(bundle)
-    from chanmodel.kline_audit import repair_signal_anchors
-    repair_signal_anchors(bundle)
+    from .reference_service import rebuild_bundle
+    rebuild_bundle(bundle)
     # Rebuild the presentation from saved signal evidence so older V4 results
     # gain the new annotations without rerunning or modifying their algorithm.
     from chanmodel.signal_chart import attach_chart_annotations

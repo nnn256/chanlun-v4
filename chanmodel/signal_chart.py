@@ -11,6 +11,7 @@ LABELS={'first_buy':'一买','second_buy':'二买','third_buy':'三买',
         'first_sell':'一卖','second_sell':'二卖','third_sell':'三卖'}
 STATES={'candidate':'待下级确认','waiting_trigger':'待细级触发','triggered':'模型结构触发',
         'structure_complete':'本级结构完成·待多周期',
+        'needs_review':'结构分歧·待复核',
         'invalidated':'已失效','withdrawn':'已撤回','blocked':'缺确认数据'}
 
 
@@ -70,6 +71,7 @@ def build_annotations(panel,links=(),cutoff=None):
         if center and center.get('rank',point['rank'])!=point['rank']:
             rejected.append({'id':ident,'reason':'center_rank_mismatch'});continue
         state='invalidated' if point.get('state')=='invalidated' else 'withdrawn' if point.get('state')=='withdrawn' else 'candidate'
+        if point.get('state')=='needs_review':state='needs_review'
         rule_audit=point.get('rule_audit') or {};local_at=rule_audit.get('evidence_available_at')
         local_time=None
         if state=='candidate' and rule_audit.get('local_geometry_completed') and index_ok(local_at,n) and times[local_at]<=as_of:
@@ -110,8 +112,15 @@ def build_annotations(panel,links=(),cutoff=None):
         first_context=None
         if first and index_ok(first.get('anchor'),n) and first.get('rank')==point['rank']:
             first_context={'id':first['id'],'anchor':first['anchor'],'price':first['price'],'label':LABELS[first['class']]}
+        if point.get('engine') and index_ok(point.get('relate_bsp1_anchor'),n):
+            first_anchor=point['relate_bsp1_anchor']
+            first_context={'id':'native-first:'+str(first_anchor),'anchor':first_anchor,
+                           'price':bars[first_anchor]['low' if point['side']=='buy' else 'high'],
+                           'label':'原生一类'+('买' if point['side']=='buy' else '卖')}
         marker={'id':panel['period']+':'+ident,'signal_id':ident,'period':panel['period'],'rank':point['rank'],
-                'class':kind,'label':LABELS[kind],'side':point['side'],'state':state,'state_label':STATES[state],
+                'class':kind,'label':point.get('label') if point.get('engine') else LABELS[kind],
+                'native_type':point.get('native_type'),'native_engine':point.get('engine'),
+                'first_seen_time':point.get('first_seen_time'),'side':point['side'],'state':state,'state_label':STATES[state],
                 'anchor':anchor,'anchor_time':times[anchor].astimezone(CN).isoformat(),'price':point['price'],
                 'available_at':available,'available_time':times[available].astimezone(CN).isoformat(),'available_price':bars[available]['close'],
                 'delay_bars':available-anchor,'confirmed_time':confirmed_time,'confirmed_index':confirmed_index,

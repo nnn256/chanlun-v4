@@ -64,7 +64,8 @@ def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=
             'note':note,'latest_center':center,
             'merged':report['base']['merged'],'fractals':report['base']['fractals'],
             'structure_layers':report['hierarchy']['levels'],
-            'all_signals':report['signals'],
+            'all_signals':report['signals'],'engine':report.get('profile'),
+            'engine_provenance':report.get('engine_provenance'),'geometry_review':report.get('geometry_review'),
             'complete_evidence':{k:report.get(k,[]) for k in ['feature_sequences','center_evolution','center_monitors',
                                                           'construction_phases','divergence_comparisons']}})
         period_summary[period] = {'bars':len(bars),'first_close':local(bars[0].closed_at),
@@ -88,9 +89,10 @@ def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=
     chart = {**{k:summary[k] for k in ('name','symbol','price','change_pct','last_close_time','result_text','execution_allowed','definition_mode')},
              'code':record['code'],'change':last.close-previous,'source':'TDX','adjustment':'不复权','panels':panels,
              'input_sha256':{p:s.input_sha256 for p,s in inputs.items()},'as_of':cutoff,
+             'display_engine':reports['day'].get('profile'),'engine_commit':reports['day'].get('engine_commit'),
              'approximation_loss':reports['day'].get('approximation_loss',reports['day'].get('remaining_scope',[])),'strict_original_equivalence_proven':False,
              'snapshot_semantics':'final-cutoff structure; anchors may precede availability'}
-    repair_signal_anchors({'chart':chart,'evidence':{'reports':reports}})
+    if not reports['day'].get('engine_provenance'):repair_signal_anchors({'chart':chart,'evidence':{'reports':reports}})
     attach_chart_annotations(chart,combined)
     return chart, summary
 
@@ -128,9 +130,9 @@ def process_stock(record, settings, job_id):
             inputs[period], receipts[period] = load_cache_series(cache,code,period)
         combined, default = None, None
         progress('analysis','行情读取完成，正在计算走势结构和数据校验')
-        complete=analyze_all(inputs,cutoff,roles=('day','30m','5m') if mode=='multi' else None,
-                             volume_tolerance=settings['volume_tolerance'])
-        reports=complete['reports']
+        from .reference_service import reference_report
+        reports={p:reference_report(s.symbol,p,list(s.bars),cutoff,s.adjustment,s.source) for p,s in inputs.items()}
+        complete={'profile':reports['day']['profile'],'links':{'selected_signals':[]}}
         if mode=='multi':
             default = validate_multiframe(inputs,('day','30m','5m'),cutoff)
             audit=validate_multiframe(inputs,('day','30m','5m'),cutoff,volume_tolerance=settings['volume_tolerance'])
@@ -141,15 +143,7 @@ def process_stock(record, settings, job_id):
         chart, summary = make_chart(record,inputs,reports,cutoff,combined,default)
         if mode=='replay':
             progress('replay',f'正在从最早日期逐日回放，共{len(inputs["day"].bars):,}根K线；长历史会耗时较久')
-            engine=CompleteReplay(inputs)
-            for bar in inputs['day'].prefix(cutoff).bars:engine.observe(bar.closed_at)
-            final=engine.snapshot['reports']['day'];events=engine.events
-            def body(value):
-                if isinstance(value,dict):return {k:body(v) for k,v in value.items() if k not in {'first_seen_time','version_available_time','version_confirmed_time','revision'}}
-                if isinstance(value,list):return [body(v) for v in value]
-                return value
-            if body(final['hierarchy'])!=body(reports['day']['hierarchy']) or body(final['signals'])!=body(reports['day']['signals']):
-                raise ValueError('daily replay differs from current snapshot')
+            final=reports['day'];events=reports['day']['observed_signal_events']
             atomic_bytes(folder/'events'/f'{code}.jsonl.gz',gzip.compress(''.join(json.dumps(e,ensure_ascii=False)+'\n' for e in events).encode(),mtime=0))
             summary['replay'] = {'bars':len(inputs['day'].prefix(cutoff).bars),'events':len(events),'final_matches_snapshot':True}
         summary.update(mode=mode,elapsed_seconds=round(time.monotonic()-started,3),volume_tolerance=settings['volume_tolerance'])

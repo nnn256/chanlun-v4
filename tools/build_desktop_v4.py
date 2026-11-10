@@ -38,12 +38,12 @@ def portable_value(value):
 
 def source_entries(root=ROOT):
     entries={}
-    for folder in ['chanmodel','workbench','tools']:
+    for folder in ['chanmodel','workbench','tools','third_party/chanpy']:
         for p in (root/folder).rglob('*'):
-            if p.is_file() and '__pycache__' not in p.parts and p.suffix in {'.py','.html','.js','.css'}:
+            if p.is_file() and '__pycache__' not in p.parts and (p.suffix in {'.py','.html','.js','.css','.json','.md'} or p.name=='LICENSE'):
                 entries[p.relative_to(root).as_posix()]=p
     for name in ['run_complete.py','run_market_backtest.py','run_v2.py','run.py','history_replay.py','market_scan.py','intraday_scan.py',
-                 '完整算法V3说明.md','V4扫描提醒与全市场回测.md','V4买卖画图说明.md','V4原始K线与买卖点核验说明.md']:
+                 '完整算法V3说明.md','V4扫描提醒与全市场回测.md','V4买卖画图说明.md','V4原始K线与买卖点核验说明.md','V4固定引擎与显示重构说明.md']:
         entries[name]=root/name
     assets=root/'runs/aoya-v2-chart-20261107/assets'
     for p in assets.iterdir():
@@ -146,12 +146,20 @@ def main():
     print('V4 seed verified; compiling executable',flush=True)
     arguments=[str(PYTHON),'-m','PyInstaller','--noconfirm','--clean','--onefile','--windowed',
                '--name','ChanlunWorkbenchV4','--distpath',str(OUT/'dist'),'--workpath',str(OUT/'pyinstaller-work'),
-               '--specpath',str(OUT),'--paths',str(ROOT),'--icon',str(resources/'app.ico'),'--version-file',str(version_file),
+               '--specpath',str(OUT),'--paths',str(ROOT),'--paths',str(ROOT/'third_party/chanpy'),'--icon',str(resources/'app.ico'),'--version-file',str(version_file),
                '--add-data',str(resources/'project-seed.zip')+';.',
                '--add-data',str(resources/'build-info.json')+';.',
                '--collect-submodules','chanmodel','--collect-submodules','workbench',
+               '--collect-submodules','Bi','--collect-submodules','Seg','--collect-submodules','ZS',
+               '--collect-submodules','KLine','--collect-submodules','Common','--collect-submodules','Combiner',
+               '--collect-submodules','BuySellPoint','--collect-submodules','Math','--collect-submodules','ChanModel',
+               '--hidden-import','ChanConfig',
                '--hidden-import','tools.capture_full_stock','--hidden-import','tkinter',
                '--hidden-import','tkinter.ttk','--hidden-import','tkinter.messagebox',str(ROOT/'desktop_app.py')]
+    vendor=ROOT/'third_party/chanpy'
+    vendor_dir=OUT/'resources/vendor-runtime';vendor_dir.mkdir(exist_ok=True)
+    shutil.copytree(vendor,vendor_dir/'chanpy',dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__'))
+    arguments[arguments.index(str(ROOT/'desktop_app.py')):arguments.index(str(ROOT/'desktop_app.py'))]=['--add-data',str(vendor)+';third_party/chanpy']
     (OUT/'build-command.json').write_text(json.dumps(arguments,ensure_ascii=False,indent=2),encoding='utf-8')
     with (OUT/'build.stdout.txt').open('w',encoding='utf-8') as stdout,(OUT/'build.stderr.txt').open('w',encoding='utf-8') as stderr:
         p=subprocess.run(arguments,cwd=ROOT,stdout=stdout,stderr=stderr)

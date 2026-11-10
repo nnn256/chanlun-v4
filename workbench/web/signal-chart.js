@@ -40,7 +40,7 @@
     const append=(tag,attrs,text)=>{const el=node(tag,attrs,text);group.appendChild(el);return el;};
     const label=(px,py,text,color)=>append('text',{x:px,y:py,fill:color,'font-size':10,'font-family':'Microsoft YaHei, sans-serif',stroke:'#fff','stroke-width':3,'paint-order':'stroke'},text);
     const visible=items.map(p=>({id:p.id,point:p,x:x(p.anchor),y:y(p.price),side:p.side,
-      label:p.label+(p.state==='triggered'?'·触发':p.state==='invalidated'?'·失效':p.state==='withdrawn'?'·撤回':p.state==='structure_complete'?'·本级完成':'·候选')}))
+      label:p.label+(p.state==='triggered'?'·触发':p.state==='invalidated'?'·失效':p.state==='withdrawn'?'·撤回':p.state==='structure_complete'?'·本级完成':p.state==='needs_review'?'·待复核':'·候选')}))
       .filter(p=>valid(p.x,p.y)&&p.x>=0&&p.x<=width&&p.y>=0&&p.y<height);
     const chosen=items.find(p=>p.id===selected);
     if(chosen){
@@ -53,7 +53,7 @@
     const positions=layoutMarkers(visible,width,height);
     let labelCount=0,timeCount=0;
     for(const item of positions){
-      const p=item.point,color=p.state==='invalidated'||p.state==='withdrawn'?'#8b97a3':p.side==='buy'?'#c34a51':'#178878';
+      const p=item.point,color=p.state==='needs_review'?'#bc791e':p.state==='invalidated'||p.state==='withdrawn'?'#8b97a3':p.side==='buy'?'#c34a51':'#178878';
       const selectedPoint=p.id===selected;
       const control=node('g',{'class':'signal-marker','data-signal-id':p.id,tabindex:0,role:'button','aria-label':p.label+' '+p.state_label+' '+p.anchor_time});
       const title=node('title',{},`${p.label} · ${p.state_label}\n端点 ${p.anchor_time} / ${p.price}\n依据 ${p.available_time} / 延后 ${p.delay_bars} 根\n失效 ${p.invalidation_operator} ${p.invalidation}`);control.appendChild(title);

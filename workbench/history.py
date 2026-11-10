@@ -65,10 +65,10 @@ def five_day(bars):
 
 
 def calendar_analysis(code,period,bars,cutoff,digest):
-    from chanmodel.complete_study import analyze_complete
+    from .reference_service import reference_report
     selected=[b for b in bars if b.closed and datetime.fromisoformat(b.closed_at)<=datetime.fromisoformat(cutoff)]
     if not selected:return None
-    return analyze_complete(code,period,bars,cutoff,digest)
+    return reference_report(code,period,list(bars),cutoff,'unadjusted','tdx')
 
 
 def build_panel(period,bars,report,digest,origin='TDX原生周期'):
@@ -89,6 +89,7 @@ def build_panel(period,bars,report,digest,origin='TDX原生周期'):
         'note':note,'latest_center':centers[-1] if centers else None,'last_segment':tail,'coverage':coverage,
         'merged':report.get('base',{}).get('merged',[]),'fractals':report.get('base',{}).get('fractals',[]),
         'structure_layers':report['hierarchy']['levels'],'all_signals':report['signals'],
+        'engine':report.get('profile'),'engine_provenance':report.get('engine_provenance'),'geometry_review':report.get('geometry_review'),
         'complete_evidence':{k:report.get(k,[]) for k in ['feature_sequences','center_evolution','center_monitors','construction_phases','divergence_comparisons']},
         'foot':f"{origin} · 全部{len(points):,}根已载入 · {forming}根形成中（不参与结构） · 历史端点不等于当时已确认"}
 

@@ -22,9 +22,10 @@ def bundle_capture(record,folder,cutoff,tolerance=100,progress=None):
     roles={p:inputs[p] for p in ('day','30m','5m')}
     from chanmodel.v2.series import validate_multiframe
     default=validate_multiframe(roles,('day','30m','5m'),cutoff)
-    combined=multiframe(roles,('day','30m','5m'),cutoff,config=DEFAULT_CONFIG,max_rank=8,volume_tolerance=tolerance)
+    audit=validate_multiframe(roles,('day','30m','5m'),cutoff,volume_tolerance=tolerance)
+    combined={'state':'calculated','data_contract':audit,'levels':reports,'signals':[],'execution_allowed':False}
     chart,summary=make_chart(record,roles,{p:reports[p] for p in roles},cutoff,combined,default)
-    combined['complete_links']=analyze_links({p:reports[p] for p in inputs},inputs,cutoff,volume_tolerance=tolerance)
+    combined['complete_links']={'signals':[],'selected_signals':[],'scope':'native local structures; cross-timeframe trigger not implemented under this profile'}
     summary['algorithm']=APP_LABEL
     chart['panels']=panels;chart['input_sha256']={p['period']:p['coverage']['input_sha256'] for p in panels}
     for p in panels:
@@ -44,7 +45,7 @@ def bundle_capture(record,folder,cutoff,tolerance=100,progress=None):
     coverage.append({'period':'auction','label':'竞价历史','status':'unsupported','count':0,'reason':'TDX接口未提供历史竞价快照，未用开盘后分钟K线替代'})
     summary.update(mode='full',volume_tolerance=tolerance,data_received_at=acquisition.get('finished_at',acquisition['requested_at']),history_coverage=coverage)
     chart.update(history_coverage=coverage,history_complete_in_chart=True)
-    repair_signal_anchors({'chart':chart,'evidence':{'reports':reports}})
+    if not reports['day'].get('engine_provenance'):repair_signal_anchors({'chart':chart,'evidence':{'reports':reports}})
     attach_chart_annotations(chart,combined)
     return {'summary':summary,'chart':chart,'history_root':str(folder.relative_to(ROOT)),
             'evidence':{'reports':reports,'default_contract':default,'multiframe':{k:v for k,v in combined.items() if k!='levels'},'source_receipts':acquisition['periods']}}

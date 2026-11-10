@@ -104,12 +104,14 @@ def structure_one(record,settings,cutoff):
                     cache_intraday(cache,symbol,raw_period,rows,raw,receipt,quality)
             else:cache=ROOT/'market_data'
             inputs[period],receipts[period]=load_cache_series(cache,symbol,period)
-        result=analyze_all(inputs,cutoff,roles=('day','30m','5m') if len(inputs)==3 else None,volume_tolerance=settings['volume_tolerance'])
+        from .reference_service import reference_report
+        reports={p:reference_report(s.symbol,p,list(s.bars),cutoff,s.adjustment,s.source) for p,s in inputs.items()}
+        result={'reports':reports,'links':{'selected_signals':[],'pairs':{}}}
         signals=[]
         for period,report in result['reports'].items():
             bars=inputs[period].prefix(cutoff).bars
             for point in report['signals']:
-                if point['state']=='invalidated':continue
+                if point['state'] in {'invalidated','needs_review'}:continue
                 signals.append({**point,'signal_id':period+':'+point['id'],'period':period,
                                 'anchor_time':bars[point['anchor']].closed_at,'available_time':bars[point['available_at']].closed_at,
                                 'age_bars':len(bars)-1-point['available_at'],'trade_level':period,
