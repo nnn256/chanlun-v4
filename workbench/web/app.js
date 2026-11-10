@@ -117,7 +117,7 @@ function renderStock(preserve=false){
   text('#stock-price',fmt(s.price));text('#stock-change',(s.change_pct>=0?'+':'')+fmt(s.change_pct)+'%');
   $('.stock-quote').className='stock-quote '+(s.change_pct>=0?'up':'down');
   text('#stock-date',s.live?`最新交易日 ${s.live.latest_bar_at.slice(0,10)}${s.live.forming?' · 今日K线形成中':''} · 获取 ${s.live.received_at.slice(11,19)} · 确认结构截止 ${s.live.confirmed_through.slice(0,16).replace('T',' ')} · 北京时间`:`历史快照 · 行情截止 ${s.last_close_time} · TDX不复权 · 北京时间`);
-  text('#stock-version',(s.algorithm||'原版本')+' · 4.1.1 固定引擎 / '+(MODE[s.mode]||'三周期校验'));
+  text('#stock-version',(s.algorithm||'原版本')+' · 4.1.2 固定引擎 / '+(MODE[s.mode]||'三周期校验'));
   let message=s.result_text||'结构研究结果';const states=s.multiframe_states||{};
   if(states.waiting_lower_confirmation)message+=`；${states.waiting_lower_confirmation}个历史候选待低级别确认`;
   if(states.blocked_terminal_history)message+=`；${states.blocked_terminal_history}个候选缺少终结段分钟历史`;
@@ -201,7 +201,7 @@ function renderCharts(preserve=false){
     const resize=()=>{if(container.clientWidth){const range=chart.timeScale().getVisibleLogicalRange();chart.resize(container.clientWidth,container.clientHeight);if(range)chart.timeScale().setVisibleLogicalRange(range);requestAnimationFrame(draw);}};
     const observer=new ResizeObserver(resize);observer.observe(container);S.charts.push({chart,candles,svg,draw,resize,observer,p,container,card});requestAnimationFrame(draw);
   });
-  updateSignalVisibility();window.chartReady=true;window.workbenchProof=()=>({selected:S.selected,version:'4.1.1',live:S.data?.summary?.live||null,panels:S.charts.map(c=>({period:c.p.period,bars:c.p.bars.length,segments:c.p.segments.length,first:c.p.bars[0]?.date_cn,last:c.p.bars.at(-1)?.date_cn,forming:c.p.bars.at(-1)?.is_closed===false,visible:c.chart.timeScale().getVisibleLogicalRange(),signal_annotations:c.p.visible_signal_annotations?.length||0,signal_render:c.p.signal_render_stats||null})),executionAllowed:false});
+  updateSignalVisibility();window.chartReady=true;window.workbenchProof=()=>({selected:S.selected,version:'4.1.2',live:S.data?.summary?.live||null,panels:S.charts.map(c=>({period:c.p.period,bars:c.p.bars.length,segments:c.p.segments.length,first:c.p.bars[0]?.date_cn,last:c.p.bars.at(-1)?.date_cn,forming:c.p.bars.at(-1)?.is_closed===false,visible:c.chart.timeScale().getVisibleLogicalRange(),signal_annotations:c.p.visible_signal_annotations?.length||0,signal_render:c.p.signal_render_stats||null})),executionAllowed:false});
 }
 
 async function selectPeriod(period,date=null){
@@ -339,6 +339,7 @@ function prepareSignalDisplay(){
   if(!display.total&&display.ranks.length){S.rank=display.ranks[0];$('#structure-rank').value=String(S.rank);}
   for(const option of $('#structure-rank').options){const n=all.filter(p=>p.rank===Number(option.value)).length;option.textContent=(S.data?.chart?.display_engine?(option.value==='1'?'笔级买卖点/线段':'线段级买卖点/高阶线段'):'L'+option.value)+(n?'（'+n+'点）':'（0点）');option.disabled=!!S.data?.chart?.display_engine&&Number(option.value)>2;}
   S.range='recent';S.signalSelected='';
+  const source=S.data?.chart?.panels?.find(p=>p.period===display.latest?.period);if(display.latest&&source&&display.latest.anchor<source.bars.length-300){S.range='signals';S.signalSelected=display.latest.id;}
 }
 function updateSignalVisibility(){
   const target=$('#signal-visibility');if(!target||!S.data?.chart)return;

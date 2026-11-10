@@ -19,6 +19,12 @@
     const center=point.anchor,reference=Math.max(center,point.available_at,point.confirmed_index??0);
     return {from:Math.max(-2,center-65),to:Math.min(barCount+8,Math.max(center+65,reference+15))};
   }
+  function classicLabel(point){
+    const side=point.side==='sell'?'卖':'买';
+    const native={'1':'一'+side,'1p':'盘整一'+side,'2':'二'+side,'2s':'二'+side+'延伸','3a':'三'+side+'A','3b':'三'+side+'B'};
+    const classes={first_buy:'一买',second_buy:'二买',third_buy:'三买',first_sell:'一卖',second_sell:'二卖',third_sell:'三卖'};
+    return native[point.native_type]||classes[point.class]||point.label;
+  }
   function layoutMarkers(items,width,height){
     const occupied=[],result=[];
     for(const item of items.slice().sort((a,b)=>a.x-b.x||a.id.localeCompare(b.id))){
@@ -40,7 +46,7 @@
     const append=(tag,attrs,text)=>{const el=node(tag,attrs,text);group.appendChild(el);return el;};
     const label=(px,py,text,color)=>append('text',{x:px,y:py,fill:color,'font-size':10,'font-family':'Microsoft YaHei, sans-serif',stroke:'#fff','stroke-width':3,'paint-order':'stroke'},text);
     const visible=items.map(p=>({id:p.id,point:p,x:x(p.anchor),y:y(p.price),side:p.side,
-      label:p.label+(p.state==='triggered'?'·触发':p.state==='invalidated'?'·失效':p.state==='withdrawn'?'·撤回':p.state==='structure_complete'?'·本级完成':p.state==='needs_review'?'·待复核':'·候选')}))
+      label:classicLabel(p)+(p.state==='triggered'?'·触发':p.state==='invalidated'?'·已失效':p.state==='withdrawn'?'·已撤回':p.state==='structure_complete'?'·本级完成':p.state==='needs_review'?'·待复核':'·候选')}))
       .filter(p=>valid(p.x,p.y)&&p.x>=0&&p.x<=width&&p.y>=0&&p.y<height);
     const chosen=items.find(p=>p.id===selected);
     if(chosen){
@@ -55,8 +61,8 @@
     for(const item of positions){
       const p=item.point,color=p.state==='needs_review'?'#bc791e':p.state==='invalidated'||p.state==='withdrawn'?'#8b97a3':p.side==='buy'?'#c34a51':'#178878';
       const selectedPoint=p.id===selected;
-      const control=node('g',{'class':'signal-marker','data-signal-id':p.id,tabindex:0,role:'button','aria-label':p.label+' '+p.state_label+' '+p.anchor_time});
-      const title=node('title',{},`${p.label} · ${p.state_label}\n端点 ${p.anchor_time} / ${p.price}\n依据 ${p.available_time} / 延后 ${p.delay_bars} 根\n失效 ${p.invalidation_operator} ${p.invalidation}`);control.appendChild(title);
+      const control=node('g',{'class':'signal-marker','data-signal-id':p.id,tabindex:0,role:'button','aria-label':classicLabel(p)+' '+p.state_label+' '+p.anchor_time});
+      const title=node('title',{},`${classicLabel(p)} · ${p.state_label}\n端点 ${p.anchor_time} / ${p.price}\n依据 ${p.available_time} / 延后 ${p.delay_bars} 根\n失效 ${p.invalidation_operator} ${p.invalidation}`);control.appendChild(title);
       const dy=p.side==='buy'?1:-1;
       control.appendChild(node('path',{d:`M ${item.x} ${item.y} L ${item.x-6} ${item.y+dy*11} L ${item.x+6} ${item.y+dy*11} Z`,fill:p.state==='triggered'?color:'#fff',stroke:color,'stroke-width':selectedPoint?2.6:1.8}));
       control.appendChild(node('circle',{cx:item.x,cy:item.y+dy*6,r:12,fill:'transparent',stroke:'none'}));
@@ -77,5 +83,5 @@
     return {visible_markers:positions.length,visible_labels:labelCount,hidden_dense_labels:positions.length-labelCount,milestones:timeCount,
       buy_markers:positions.filter(p=>p.side==='buy').length,sell_markers:positions.filter(p=>p.side==='sell').length};
   }
-  root.SignalChart={layoutMarkers,draw,presentation,markerRange};
+  root.SignalChart={layoutMarkers,draw,presentation,markerRange,classicLabel};
 })(globalThis);

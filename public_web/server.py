@@ -46,7 +46,7 @@ def public_bundle(data,period):
         if p['period']!=period:continue
         panels.append({k:p.get(k) for k in ('period','bars','input_bars','strokes','segments','higher_segments',
             'centers','all_signals','engine','engine_provenance','geometry_review','kline_audit','confirmed_through',
-            'received_at','observed_at','latest_bar_at','forming_count','note','structure_layers')})
+            'received_at','observed_at','latest_bar_at','forming_count','note','structure_layers','signal_chart')})
         provenance=p.get('engine_provenance') or {}
         panels[-1]['engine_provenance']={k:provenance[k] for k in ('commit','license','repository','profile','settings') if k in provenance}
     if len(panels)!=1:raise ValueError('requested panel is unavailable')
@@ -169,7 +169,7 @@ class Handler(BaseHTTPRequestHandler):
                 if path.startswith('/api/stock/'):
                     return self.send(stock(path.rsplit('/',1)[1],query.get('period',['day'])[0]))
                 return self.send({'error':'接口不存在'},404)
-            static={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/config.js':'config.js',
+            static={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/config.js':'config.js','/signal-chart.js':'signal-chart.js',
                     '/assets/lightweight-charts.js':'assets/lightweight-charts.js','/assets/LICENSE':'assets/LICENSE',
                     '/assets/NOTICE':'assets/NOTICE','/assets/library-source.json':'assets/library-source.json'}
             if path not in static:return self.send({'error':'页面不存在'},404)
