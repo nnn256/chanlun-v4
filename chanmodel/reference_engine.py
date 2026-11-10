@@ -83,11 +83,14 @@ def run_reference(bars,period='day',observe=True,as_of=None):
             for kind in p.type:
                 ident=f'cp:{rank}:{kind.value}:{"buy" if p.is_buy else "sell"}:{p.klu.idx}'
                 present.add(ident);sure=bool(p.bi.is_sure)
+                signature=json.dumps({'begin':p.bi.get_begin_klu().idx,'end':p.klu.idx,'sure':sure,
+                                      'first_context':p.relate_bsp1.klu.idx if p.relate_bsp1 else None,
+                                      'features':dict(p.features.items())},sort_keys=True,allow_nan=False)
                 old=registry.get(ident)
-                if old is None or not old['active'] or old['sure']!=sure:
-                    event='appeared' if old is None else 'reappeared' if not old['active'] else 'structure_completed' if sure else 'confirmation_withdrawn'
+                if old is None or not old['active'] or old.get('signature')!=signature:
+                    event='appeared' if old is None else 'reappeared' if not old['active'] else 'structure_completed' if sure and not old['sure'] else 'confirmation_withdrawn' if old['sure'] and not sure else 'revised'
                     record={'first_seen':old['first_seen'] if old else index,'observed':index,
-                            'sure':sure,'active':True,'confirmed':index if sure else None}
+                            'sure':sure,'active':True,'confirmed':index if sure else None,'signature':signature}
                     registry[ident]=record
                     events.append({'id':ident,'event':event,'observed_index':index,'observed_at':bar.closed_at,
                                    'anchor':p.klu.idx,'native_type':kind.value,'rank':rank,'side':'buy' if p.is_buy else 'sell',

@@ -7,7 +7,7 @@ import subprocess
 import sys
 import uuid
 from chanmodel.tdx_data import atomic_json,now_iso
-from chanmodel.market_backtest import run_market
+from chanmodel.market_backtest import run_market,PROFILE as BACKTEST_PROFILE
 from .store import ROOT,STATE,connect
 
 
@@ -37,7 +37,7 @@ def launch(body):
     with (folder/'worker.stdout.txt').open('ab') as stdout,(folder/'worker.stderr.txt').open('ab') as stderr:
         p=subprocess.Popen(command,cwd=ROOT,stdin=subprocess.DEVNULL,stdout=stdout,stderr=stderr,
                            env={**os.environ,'PYTHONIOENCODING':'utf-8'},creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
-    value={**{k:spec[k] for k in ['id','created','cutoff','workers','output']},'state':'running','pid':p.pid,'total':len(rows)}
+    value={**{k:spec[k] for k in ['id','created','cutoff','workers','output']},'state':'running','pid':p.pid,'total':len(rows),'algorithm_scope':BACKTEST_PROFILE,'reference_engine_performance':False}
     with connect() as db:db.execute('INSERT OR REPLACE INTO metadata VALUES(?,?)',('backtest:'+ident,json.dumps(value)))
     return value
 
