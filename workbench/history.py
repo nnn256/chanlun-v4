@@ -84,7 +84,7 @@ def build_panel(period,bars,report,digest,origin='TDX原生周期'):
         'first':points[0]['date_cn'] if points else None,'last':points[-1]['date_cn'] if points else None,
         'forming_count':forming,'source':origin,'input_sha256':digest,'listing_inception_proven':False}
     return {'period':period,'label':LABELS[period],'visible_start':0,'visible_bars':len(points),'input_bars':len(points),'bars':points,
-        'strokes':report['base']['strokes'],'segments':report['base']['segments'],'centers':centers,
+        'strokes':report['base']['strokes'],'segments':report['base']['segments'],'higher_segments':report['base'].get('higher_segments',[]),'centers':centers,
         'signals':[{**s,'label':SIGNAL_LABELS.get(s['class'],s['class'])} for s in report['signals'] if s['rank']==1 and s['state']!='invalidated'],
         'note':note,'latest_center':centers[-1] if centers else None,'last_segment':tail,'coverage':coverage,
         'merged':report.get('base',{}).get('merged',[]),'fractals':report.get('base',{}).get('fractals',[]),

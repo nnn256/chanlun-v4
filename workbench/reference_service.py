@@ -17,7 +17,7 @@ CACHE=OrderedDict();LOCK=threading.RLock()
 
 
 def reference_report(symbol,period,bars,cutoff,adjustment='unadjusted',source='saved_raw_ohlcv'):
-    payload={'adapter_version':'native-context-review-v5','symbol':symbol,'period':period,'adjustment':adjustment,'cutoff':cutoff,'commit':COMMIT,'settings':SETTINGS,
+    payload={'adapter_version':'native-context-review-v6','symbol':symbol,'period':period,'adjustment':adjustment,'cutoff':cutoff,'commit':COMMIT,'settings':SETTINGS,
              'bars':[[b.pos,b.closed_at,b.open,b.high,b.low,b.close,b.volume,b.closed] for b in bars]}
     key=hashlib.sha256(json.dumps(payload,allow_nan=False,separators=(',',':')).encode()).hexdigest()
     path=STATE/'reference-rebuild'/COMMIT[:12]/(key+'.json.gz')
@@ -50,7 +50,7 @@ def rebuild_bundle(bundle):
         report=reference_report(symbol,panel['period'],bars,cutoff,bundle['summary'].get('adjustment','unadjusted'))
         new_reports[panel['period']]=report
         panel.update(merged=report['base']['merged'],fractals=report['base']['fractals'],
-                     strokes=report['base']['strokes'],segments=report['base']['segments'],
+                     strokes=report['base']['strokes'],segments=report['base']['segments'],higher_segments=report['base']['higher_segments'],
                      structure_layers=report['hierarchy']['levels'],all_signals=report['signals'],
                      centers=report['hierarchy']['levels'][0]['centers'],
                      signals=[s for s in report['signals'] if s['rank']==1],

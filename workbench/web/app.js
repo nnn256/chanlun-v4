@@ -159,7 +159,7 @@ function renderCharts(){
     const layer=(original.structure_layers||[]).find(x=>x.rank===S.rank);
     const childLayer=(original.structure_layers||[]).find(x=>x.rank===S.rank-1);
     const referenceNative=!!original.engine_provenance;
-    const rankSegments=referenceNative?(S.rank===1?original.segments:(childLayer?.completed_types||[]).map(t=>({...t,state:'confirmed'}))):(S.rank===1?original.segments:(childLayer?.completed_types||[]).map(t=>({...t,state:'confirmed'})));
+    const rankSegments=referenceNative?(S.rank===1?original.segments:original.higher_segments||[]):(S.rank===1?original.segments:(childLayer?.completed_types||[]).map(t=>({...t,state:'confirmed'})));
     const rankStrokes=referenceNative?(S.rank===1?original.strokes:original.segments):original.strokes;
     const p={...original,strokes:rankStrokes.filter(s=>$('#show-review-objects').checked||!s.review_issues?.length),segments:rankSegments.filter(s=>$('#show-review-objects').checked||!s.review_issues?.length),centers:(original.structure_layers?(layer?layer.centers:[]):original.centers).filter(c=>$('#show-review-objects').checked||!c.review_issues?.length),signals:original.all_signals?original.all_signals.filter(s=>s.rank===S.rank&&s.state!=='invalidated'):original.signals};
     const annotations=(original.signal_chart?.objects||[]).filter(p=>($('#show-review-objects').checked||p.state!=='needs_review')&&p.rank===S.rank&&($('#signal-show-invalid').checked||!['invalidated','withdrawn'].includes(p.state)));

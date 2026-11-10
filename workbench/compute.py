@@ -50,7 +50,7 @@ def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=
                    'high':b.high,'low':b.low,'close':b.close,'volume':b.volume} for b in bars[start:]]
         candidates = []
         for s in sorted(report['signals'], key=lambda x:x['anchor'], reverse=True):
-            if s['state'] == 'invalidated':
+            if s['state'] in {'invalidated','needs_review'}:
                 continue
             candidates.append({**{k:s[k] for k in ('id','class','rank','state','price','invalidation','zd','zg')},
                                'label':NAMES.get(s['class'],s['class']), 'anchor_time':local(bars[s['anchor']].closed_at),
@@ -59,6 +59,7 @@ def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=
         panels.append({'period':period,'visible_start':start,'visible_bars':len(points),'input_bars':len(bars),'default_visible':keep,'history_complete_in_chart':True,
             'bars':points,'strokes':[s for s in report['base']['strokes'] if s['end']>=start],
             'segments':[s for s in report['base']['segments'] if s['end']>=start],
+            'higher_segments':report['base'].get('higher_segments',[]),
             'centers':[c for c in layer['centers'] if c['end']>=start],
             'signals':[{**s,'label':NAMES.get(s['class'],s['class'])} for s in report['signals'] if s['rank']==1 and s['state']!='invalidated' and s['anchor']>=start],
             'note':note,'latest_center':center,

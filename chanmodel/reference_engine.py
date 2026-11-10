@@ -111,11 +111,18 @@ def make_report(engine,bars,registry,events,structural_first,symbol,period,cutof
     def move(obj,kind):
         a,b=obj.get_begin_klu().idx,obj.get_end_klu().idx
         known=structural_first.get((kind,a,b),len(bars)-1)
+        evidence=None;native_fx=getattr(obj,'eigen_fx',None)
+        if native_fx:
+            evidence={'gap':bool(native_fx.ele[1].gap) if native_fx.ele[1] else None,
+                      'last_evidence_native_index':native_fx.last_evidence_bi.idx if native_fx.last_evidence_bi else None,
+                      'elements':[{'low':e.low,'high':e.high,'native_line_indices':[line.idx for line in e.lst]}
+                                  for e in native_fx.ele if e is not None]}
         return {'id':f'cp:{kind}:{a}:{b}','start':a,'end':b,'direction':'up' if obj.is_up() else 'down',
                 'start_price':obj.get_begin_val(),'end_price':obj.get_end_val(),'low':obj._low(),'high':obj._high(),
                 'state':'confirmed' if obj.is_sure else 'provisional','basis_at':known,'available_at':known,
                 'basis_closed':True,'engine':PROFILE,'native_index':obj.idx,'reason':getattr(obj,'reason',None),
-                'confirmed_time':local_time(bars,known) if obj.is_sure else None}
+                'confirmed_time':local_time(bars,known) if obj.is_sure else None,
+                'native_eigen_evidence':evidence}
     strokes=[move(s,'stroke') for s in engine.bi_list]
     segments=[move(s,'segment') for s in engine.seg_list]
     higher=[move(s,'segment2') for s in engine.segseg_list]
@@ -195,7 +202,7 @@ def make_report(engine,bars,registry,events,structural_first,symbol,period,cutof
     report={'schema':'chanlun.reference.v1','profile':PROFILE,'symbol':symbol,'period':period,'adjustment':adjustment,
             'source':source,'as_of':cutoff,'last_bar_at':bars[-1].closed_at,'config':SETTINGS,
             'input_sha256':input_sha256,'input_audit':{'state':'raw_observed_prefix','bars_used':len(bars)},
-            'base':{'merged':merged,'fractals':fractals,'strokes':strokes,'segments':segments,'stroke_rejections':[]},
+            'base':{'merged':merged,'fractals':fractals,'strokes':strokes,'segments':segments,'higher_segments':higher,'stroke_rejections':[]},
             'hierarchy':{'levels':layers,'base_units':[],'edges':[],'profile':PROFILE},'signals':signals,
             'divergence_comparisons':[],'feature_sequences':[],'center_evolution':[],'center_monitors':[],
             'construction_phases':[],'decompositions':[],'observed_signal_events':events,

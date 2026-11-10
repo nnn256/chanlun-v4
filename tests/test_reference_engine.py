@@ -28,6 +28,8 @@ class ReferenceEngineContract(unittest.TestCase):
         for key in ['strokes','segments']:
             actual=[(b['start'],b['end'],b['state']=='confirmed') for b in result['base'][key]]
             self.assertEqual(actual,native[key])
+        self.assertEqual([(s['start'],s['end']) for s in result['base']['higher_segments']],
+                         [(s.get_begin_klu().idx,s.get_end_klu().idx) for s in engine.segseg_list])
 
     def test_every_signal_uses_native_endpoint_not_an_invented_retroactive_low(self):
         series=daily_series(500);engine,_,_,_,_=run_reference(series.bars,'day')
