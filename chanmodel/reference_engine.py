@@ -234,12 +234,22 @@ def review_geometry(report):
             if any(m['id'] in bad_strokes for m in part):reasons.append('contains_stroke_requiring_review')
         s['review_issues']=reasons
         if reasons:bad_segments.add(s['id']);issues.append({'id':s['id'],'kind':'segment','reasons':reasons})
+    bad_centers=set()
+    for layer in report.get('hierarchy',{}).get('levels',[]):
+        bad_children=bad_strokes if layer['rank']==1 else bad_segments
+        for center in layer['centers']:
+            if any(component in bad_children for component in center.get('components',[])):
+                center['review_issues']=['contains_component_requiring_review'];bad_centers.add(center['id'])
+            else:center['review_issues']=[]
     for p in report['signals']:
         dependencies=[];start,end=p['terminal_range']
         for s in report['base']['strokes']:
             if s['start']<=end and s['end']>=start and s['id'] in bad_strokes:dependencies.append(s['id'])
         for s in report['base']['segments']:
             if s['start']<=end and s['end']>=start and s['id'] in bad_segments:dependencies.append(s['id'])
+        if p.get('center_id') in bad_centers:dependencies.append(p['center_id'])
+        if p.get('native_type','').startswith('3') and not p.get('center_id'):
+            dependencies.append('native_center_relation_not_uniquely_mapped')
         p['review_dependencies']=dependencies
         if dependencies and p['state']!='invalidated':
             p['state']='needs_review';p['rule_audit']['passed']=False;p['rule_audit']['local_geometry_completed']=False

@@ -1,0 +1,16 @@
+{
+  "total_saved": 5579,
+  "processed": 5579,
+  "passed": 702,
+  "needs_review": 4877,
+  "failed": 0,
+  "raw_bars": 17073625,
+  "violations": 20045,
+  "reference_signals": 155083,
+  "seconds": 290.7,
+  "complete": true,
+  "engine_commit": "f8ca3b5e44d7166e2abd756a8e7fa816c79faebe",
+  "mode": "final_cutoff_snapshot",
+  "first_seen_history_proven": false,
+  "review_scope": "independent strict standard/vertex extrema interpretation; disagreement is not proof of original-theory error"
+}

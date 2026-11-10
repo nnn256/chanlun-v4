@@ -15,7 +15,7 @@ from zipfile import ZipFile,ZIP_DEFLATED
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from chanmodel.release import APP_VERSION,APP_LABEL
-from chanmodel.unified import PROFILE
+from chanmodel.reference_engine import PROFILE
 
 OUT=Path(os.environ.get('CHANLUN_V4_BUILD_DIR',ROOT.parent/'artifacts/chanlun-v4-windows-20261110'))
 PYTHON=ROOT/'artifacts/exe-build-20261108/build-env/Scripts/python.exe'

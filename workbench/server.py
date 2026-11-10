@@ -394,7 +394,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(result)
             if path=='/api/health':
                 from .store import DB
-                return self.send({'service':'chanlun-workbench-v1','status':'ok','instance':hashlib.sha256(str(ROOT).encode()).hexdigest()[:16],'desktop':bool(getattr(sys,'frozen',False)),'version':APP_VERSION,'release':APP_LABEL,'features':['signal_chart_v1','marker_visibility_v2'],'pid':os.getpid(),'database':str(DB)})
+                return self.send({'service':'chanlun-workbench-v1','status':'ok','instance':hashlib.sha256(str(ROOT).encode()).hexdigest()[:16],'desktop':bool(getattr(sys,'frozen',False)),'version':APP_VERSION,'release':APP_LABEL,'features':['signal_chart_v1','marker_visibility_v2','pinned_reference_engine_review_v1'],'pid':os.getpid(),'database':str(DB)})
             if path=='/api/errors':
                 with connect() as db:
                     rows=[dict(r) for r in db.execute("SELECT i.symbol,u.name,i.error FROM items i JOIN universe u USING(symbol) WHERE job_id=? AND i.state='failed' LIMIT 100",(query.get('job',[''])[0],))]

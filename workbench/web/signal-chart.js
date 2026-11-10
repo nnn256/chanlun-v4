@@ -5,14 +5,14 @@
   const valid=(...v)=>v.every(n=>n!==null&&Number.isFinite(n));
   const intersects=(a,b)=>a.x<b.x+b.width+5&&a.x+a.width+5>b.x&&a.y<b.y+b.height+4&&a.y+a.height+4>b.y;
   function presentation(items,options={}){
-    const {period='all',rank=1,showInvalid=true}=options;
+    const {period='all',rank=1,showInvalid=true,showReview=false}=options;
     const relevant=items.filter(p=>period==='all'?['day','30m','5m'].includes(p.period):p.period===period);
     const atRank=relevant.filter(p=>p.rank===rank);
-    const visible=atRank.filter(p=>showInvalid||!['invalidated','withdrawn'].includes(p.state));
+    const visible=atRank.filter(p=>(showReview||p.state!=='needs_review')&&(showInvalid||!['invalidated','withdrawn'].includes(p.state)));
     const historical=atRank.filter(p=>['invalidated','withdrawn'].includes(p.state)).length;
     const sorted=visible.slice().sort((a,b)=>b.anchor-b.anchor||b.available_at-a.available_at||a.id.localeCompare(b.id));
     return {items:sorted,total:atRank.length,historical,active:atRank.length-historical,
-      buys:atRank.filter(p=>p.side==='buy').length,sells:atRank.filter(p=>p.side==='sell').length,
+      review:atRank.filter(p=>p.state==='needs_review').length,buys:atRank.filter(p=>p.side==='buy').length,sells:atRank.filter(p=>p.side==='sell').length,
       ranks:[...new Set(relevant.map(p=>p.rank))].sort((a,b)=>a-b),latest:sorted[0]||null};
   }
   function markerRange(point,barCount){
