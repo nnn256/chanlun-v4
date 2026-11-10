@@ -9,6 +9,7 @@ import json
 import mimetypes
 import os
 import re
+import sqlite3
 import threading
 import time
 import urllib.parse
@@ -84,7 +85,9 @@ def universe():
 def scan():
     saved=Path.home()/'Documents/ChanlunV4ReviewData/desktop-status.json'
     source=os.environ.get('CHANLUN_PUBLIC_SCAN_STATUS',str(saved) if saved.is_file() else None)
-    data=local_json('/api/monitor',timeout=15,status=source)
+    status=Path(source) if source else Path.home()/'Documents/ChanlunV4PublicData/desktop-status.json'
+    database=status.parent/'project/runtime/workbench/workbench.sqlite3'
+    data=read_scan_snapshot(database)
     runs=[{k:r.get(k) for k in ('state','started','updated')}|{
         'kind':r['payload'].get('kind'),'done':r['payload'].get('done',0),
         'total':r['payload'].get('total',0),'failed':r['payload'].get('failed',0)} for r in data['runs']]
@@ -93,7 +96,23 @@ def scan():
         p=r['payload'];signals.append({k:r.get(k) for k in ('symbol','state','last_seen')}|{
             k:p.get(k) for k in ('class','label','price','invalidation','available_time','period','rank')})
     return {'counts':data['counts'],'session':data['session'],'runs':runs,'signals':signals,
-            'received_at':now(),'scope':'公开查看本机扫描进度和研究候选；此页不启动或修改计算任务'}
+            'received_at':now(),'scope':'最近保存的扫描进度和研究候选；此页不启动或修改计算任务',
+            'snapshot_at':runs[0]['updated'] if runs else None}
+
+
+def read_scan_snapshot(database):
+    db=sqlite3.connect(Path(database).resolve().as_uri()+'?mode=ro',uri=True,timeout=1)
+    db.row_factory=sqlite3.Row
+    try:
+        db.execute('BEGIN')
+        runs=[dict(r) for r in db.execute('SELECT state,started,updated,payload FROM monitor_runs ORDER BY started DESC LIMIT 8')]
+        signals=[dict(r) for r in db.execute("SELECT symbol,state,last_seen,payload FROM monitor_signals WHERE state NOT IN ('withdrawn','invalidated') ORDER BY last_seen DESC LIMIT 60")]
+        counts={'quotes':db.execute('SELECT COUNT(*) FROM monitor_quotes').fetchone()[0],
+                'structures':db.execute('SELECT COUNT(*) FROM monitor_structures').fetchone()[0],
+                'unread':db.execute('SELECT COUNT(*) FROM monitor_alerts WHERE acknowledged=0').fetchone()[0]}
+        for row in runs+signals:row['payload']=json.loads(row['payload'])
+        return {'runs':runs,'signals':signals,'counts':counts,'session':{'state':'saved_snapshot'}}
+    finally:db.close()
 
 
 def backtest():

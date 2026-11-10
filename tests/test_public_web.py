@@ -1,6 +1,6 @@
 from http.server import ThreadingHTTPServer
 from pathlib import Path
-import json,threading,tempfile,unittest,urllib.request,urllib.error
+import json,threading,tempfile,unittest,urllib.request,urllib.error,sqlite3,hashlib
 from unittest.mock import patch
 from public_web import server
 
@@ -32,6 +32,22 @@ class PublicWebTests(unittest.TestCase):
             self.assertTrue(all(server.allowed_rate('test-ip') for _ in range(60)))
             self.assertFalse(server.allowed_rate('test-ip'))
             self.assertTrue(server.allowed_rate('another-ip'))
+
+    def test_scan_reads_a_consistent_saved_snapshot_without_mutating_the_database(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'workbench.sqlite3'
+            db=sqlite3.connect(path)
+            db.executescript('''CREATE TABLE monitor_runs(state,started,updated,payload);
+                CREATE TABLE monitor_signals(symbol,state,last_seen,payload);
+                CREATE TABLE monitor_quotes(symbol);CREATE TABLE monitor_structures(symbol);
+                CREATE TABLE monitor_alerts(acknowledged);''')
+            db.execute('INSERT INTO monitor_runs VALUES(?,?,?,?)',('running','start','2026-11-10T12:00:00+08:00',json.dumps({'done':980,'total':5580})))
+            db.execute('INSERT INTO monitor_quotes VALUES(?)',('bj920010',));db.commit();db.close()
+            before=hashlib.sha256(path.read_bytes()).hexdigest()
+            result=server.read_scan_snapshot(path)
+            self.assertEqual(result['runs'][0]['payload']['done'],980)
+            self.assertEqual(result['counts']['quotes'],1)
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),before)
 
     def test_public_http_refuses_task_mutations_and_arbitrary_files(self):
         http=ThreadingHTTPServer(('127.0.0.1',0),server.Handler)
