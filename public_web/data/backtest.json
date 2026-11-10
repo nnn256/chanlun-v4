@@ -1,0 +1,25 @@
+{
+  "profile": "v4_all_market_daily_causal_next_open_v1",
+  "total": 5580,
+  "completed": 5579,
+  "failed": 1,
+  "remaining": 0,
+  "coverage_complete": true,
+  "all_securities_successful": false,
+  "bars": 17062482,
+  "signals": 2826,
+  "oldest_last_bar": "2026-11-05T07:00:00+00:00",
+  "newest_last_bar": "2026-11-09T07:00:00+00:00",
+  "completed_trades": 875,
+  "zero_trade_securities": 4864,
+  "mean_independent_account_return": -0.0017915020366373908,
+  "median_independent_account_return": 0.0,
+  "total_fees": 125967.98623999988,
+  "worst_account_drawdown": -0.6761483400000001,
+  "failed_symbols": [
+    "sh688827"
+  ],
+  "no_universal_corporate_action_adjustment": true,
+  "performance_scope": "separate cash accounts on unadjusted histories; not a certified corporate-action-adjusted strategy return",
+  "execution_allowed": false
+}
