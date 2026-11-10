@@ -290,6 +290,11 @@ def load_import_evidence(bundle):
 def stock(code, query):
     if not re.fullmatch(r'(sh|sz|bj)\d{6}',code):
         raise ValueError('股票代码格式错误')
+    if query.get('live')==['1']:
+        from .services import ensure_tdx
+        from .live import live_stock
+        ensure_tdx()
+        return live_stock(code,query.get('period',query.get('audit_period',['day']))[0],query.get('full')==['1'])
     job=query.get('job',[''])[0]
     with connect() as db:
         if job:
@@ -369,6 +374,13 @@ class Handler(BaseHTTPRequestHandler):
                 if missing:raise ValueError('报价接口未返回指定股票')
                 return self.send({'quote':quotes[0],'received_at':receipt['received_at'],'freshness':'获取时间不等于成交时间，休市时可能为最后交易日报价'})
             if path=='/api/stocks':return self.send(market(query))
+            if path.startswith('/api/live-stock/'):
+                from .services import ensure_tdx
+                from .live import live_stock
+                code=path.rsplit('/',1)[1]
+                if not re.fullmatch(r'(sh|sz|bj)\d{6}',code):raise ValueError('股票代码格式错误')
+                ensure_tdx()
+                return self.send(live_stock(code,query.get('period',['day'])[0],query.get('full')==['1'],query.get('fresh')==['1']))
             if path.startswith('/api/stock/'):return self.send(stock(path.rsplit('/',1)[1],query))
             if path.startswith('/api/kline-csv/'):
                 code=path.rsplit('/',1)[1];data=stock(code,query)
@@ -388,13 +400,16 @@ class Handler(BaseHTTPRequestHandler):
                 period=query.get('audit_period',['day'])[0]
                 panel=next((p for p in data['chart']['panels'] if p['period']==period),None)
                 if panel is None:raise ValueError('没有保存所选周期的K线')
+                if query.get('live')==['1']:
+                    from .live import audit_live_panel
+                    return self.send(audit_live_panel(panel))
                 receipt=data.get('evidence',{}).get('source_receipts',{}).get(period)
                 result=verify_source(panel,receipt,code,ROOT,data['chart'].get('as_of',data['summary']['as_of']))
                 result['anchor_corrections']=panel.get('anchor_corrections',[])
                 return self.send(result)
             if path=='/api/health':
                 from .store import DB
-                return self.send({'service':'chanlun-workbench-v1','status':'ok','instance':hashlib.sha256(str(ROOT).encode()).hexdigest()[:16],'desktop':bool(getattr(sys,'frozen',False)),'version':APP_VERSION,'release':APP_LABEL,'features':['signal_chart_v1','marker_visibility_v2','pinned_reference_engine_review_v1'],'pid':os.getpid(),'database':str(DB)})
+                return self.send({'service':'chanlun-workbench-v1','status':'ok','instance':hashlib.sha256(str(ROOT).encode()).hexdigest()[:16],'desktop':bool(getattr(sys,'frozen',False)),'version':APP_VERSION,'release':APP_LABEL,'offline_start':os.environ.get('CHANLUN_START_OFFLINE')=='1','features':['signal_chart_v1','marker_visibility_v2','pinned_reference_engine_review_v1','live_ohlcv_v1'],'pid':os.getpid(),'database':str(DB)})
             if path=='/api/errors':
                 with connect() as db:
                     rows=[dict(r) for r in db.execute("SELECT i.symbol,u.name,i.error FROM items i JOIN universe u USING(symbol) WHERE job_id=? AND i.state='failed' LIMIT 100",(query.get('job',[''])[0],))]

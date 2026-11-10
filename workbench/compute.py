@@ -36,10 +36,10 @@ def contract_brief(contract):
         for p in contract['pairs']]}
 
 
-def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=None):
+def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=None, *, include_forming=False):
     panels, period_summary = [], {}
     for period, report in reports.items():
-        bars = inputs[period].prefix(cutoff).bars
+        bars = inputs[period].bars if include_forming else inputs[period].prefix(cutoff).bars
         keep = {'day':180,'30m':280,'5m':420}[period]
         start = 0
         layer = report['hierarchy']['levels'][0]
@@ -73,7 +73,7 @@ def make_chart(record, inputs, reports, cutoff, combined=None, default_contract=
             'last_close':local(bars[-1].closed_at),'latest_center':{k:center[k] for k in ('zd','zg','state','rank')} if center else None,
             'last_segment':{k:tail[k] for k in ('direction','state','start_price','end_price')} if tail else None,
             'certificate_audit':report['certificate_audit'], 'active_candidates':candidates}
-    daily = inputs['day'].prefix(cutoff).bars
+    daily = inputs['day'].bars if include_forming else inputs['day'].prefix(cutoff).bars
     last = daily[-1]; previous = daily[-2].close if len(daily)>1 else last.close
     states = dict(Counter(s['state'] for s in combined.get('signals',[]))) if combined else {}
     triggered = states.get('structurally_triggered_under_profile',0) if combined and combined['state']=='calculated' else None

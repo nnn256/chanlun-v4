@@ -193,6 +193,7 @@ class DesktopController:
             # Never let frozen imports depend on the caller's Desktop or a
             # PyInstaller extraction directory when resolving mutable state.
             os.chdir(self.project)
+            os.environ['CHANLUN_START_OFFLINE']='1' if getattr(self.args,'offline',False) else '0'
             self.status('starting','正在启动工作台')
             self.notify('正在启动工作台…')
             from workbench import server
@@ -330,13 +331,13 @@ def main():
             action='old_version_close_required';logging.exception('Unable to hand off old desktop instance')
         if action=='reused':return
         if action!='upgraded':
-            text=('旧版仍有扫描或回测任务运行，请等待完成后关闭旧版窗口，再启动4.1.0；已保存任务不会丢失。'
-                  if action=='busy_old_version' else '旧版窗口仍在运行，请先关闭旧版窗口，再启动4.1.0；本次没有打开旧版页面。')
+            text=('旧版仍有扫描或回测任务运行，请等待完成后关闭旧版窗口，再启动4.1.1；已保存任务不会丢失。'
+                  if action=='busy_old_version' else '旧版窗口仍在运行，请先关闭旧版窗口，再启动4.1.1；本次没有打开旧版页面。')
             (controller.directory/'upgrade-required.txt').write_text(text,encoding='utf-8')
             logging.warning(text)
             if not args.headless:
                 from tkinter import messagebox
-                messagebox.showinfo('V4 4.1.0升级提示',text)
+                messagebox.showinfo('V4 4.1.1升级提示',text)
             return
     if args.headless:
         controller.start()

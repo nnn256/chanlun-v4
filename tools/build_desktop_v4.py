@@ -43,7 +43,7 @@ def source_entries(root=ROOT):
             if p.is_file() and '__pycache__' not in p.parts and (p.suffix in {'.py','.html','.js','.css','.json','.md'} or p.name=='LICENSE'):
                 entries[p.relative_to(root).as_posix()]=p
     for name in ['run_complete.py','run_market_backtest.py','run_v2.py','run.py','history_replay.py','market_scan.py','intraday_scan.py',
-                 '完整算法V3说明.md','V4扫描提醒与全市场回测.md','V4买卖画图说明.md','V4原始K线与买卖点核验说明.md','V4固定引擎与显示重构说明.md']:
+                 '完整算法V3说明.md','V4扫描提醒与全市场回测.md','V4买卖画图说明.md','V4原始K线与买卖点核验说明.md','V4固定引擎与显示重构说明.md','V4实时K线说明.md']:
         entries[name]=root/name
     assets=root/'runs/aoya-v2-chart-20261107/assets'
     for p in assets.iterdir():
@@ -71,7 +71,7 @@ from chanmodel.release import APP_LABEL
 seed();results=[]
 for symbol in ['sz300949','sz000001','sh600000','bj920002','sh600419','sz000529','bj920010']:
     with connect() as db:record=dict(db.execute('SELECT * FROM universe WHERE symbol=?',(symbol,)).fetchone())
-    result=process_stock(record,{'mode':'day','refresh':False,'cutoff':'2026-11-05T15:00:00+08:00','volume_tolerance':1},'bundled-v4')
+    result=process_stock(record,{'mode':'day','refresh':False,'cutoff':'2026-11-09T15:00:00+08:00','volume_tolerance':1},'bundled-v4')
     assert result['state']=='success',result
     assert result['summary']['algorithm']==APP_LABEL
     with connect() as db:publish_result(db,symbol,'day','bundled-v4',now_iso(),json.dumps(result['summary'],ensure_ascii=False),result['artifact'])
@@ -122,7 +122,7 @@ def make_seed():
            'created_at':datetime.now(timezone(timedelta(hours=8))).isoformat(),
            'payload_sha256':digest(archive),'seed_files':len(files),'code_sha256':code,
            'architecture':'Windows x64','requires_system_python':False,'execution_allowed':False,
-           'sample_as_of':'2026-11-05T15:00:00+08:00'}
+           'sample_as_of':'2026-11-09T15:00:00+08:00'}
     (resources/'build-info.json').write_text(json.dumps(build,ensure_ascii=False,indent=2),encoding='utf-8')
     shutil.copy2(ROOT/'artifacts/exe-build-20261108/resources/app.ico',resources/'app.ico')
     return build

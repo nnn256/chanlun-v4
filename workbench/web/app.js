@@ -3,7 +3,7 @@ const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const S={view:'market',q:'',exchange:'',filter:'',job:new URLSearchParams(location.search).get('job')||'',offset:0,limit:40,total:0,selected:new URLSearchParams(location.search).get('symbol')||'sz300949',data:null,period:'day',range:'recent',rank:1,signalSelected:'',charts:[],overview:null,layers:{strokes:false,segments:true,centers:true,signals:true,merged:false,fractals:false,types:false},stockRequest:0,marketRequest:0};
 const PERIOD={day:'日线','5d':'5日K线','1m':'1分钟','5m':'5分钟','15m':'15分钟','30m':'30分钟','60m':'60分钟',week:'周K线',month:'月K线',quarter:'季K线',year:'年K线',timeshare:'历史分时',five_days:'五日分时',auction:'竞价历史'};
-const MODE={day:'日线扫描',multi:'三周期校验',replay:'逐日回放',full:'全周期历史'};
+const MODE={day:'日线扫描',multi:'三周期校验',replay:'逐日回放',full:'全周期历史',live:'实时K线'};
 const JOB_STATE={queued:'排队中',starting:'准备中',running:'运行中',pausing:'暂停中 · 等待当前股票结束',paused:'已暂停',completed:'已完成',interrupted:'已中断 · 可继续',cancelling:'停止中',cancelled:'已停止'};
 const STATE={calculated:'三周期已计算',blocked_data_contract:'数据校验未通过',day_only:'仅日线结构',waiting_lower_confirmation:'待低级别确认',blocked_terminal_history:'分钟历史不足',invalidated:'已失效',waiting_trigger:'待细级别触发',structurally_triggered_under_profile:'模型研究触发',awaiting_lower_confirmation:'待低级别确认'};
 const fmt=(v,n=2)=>v==null?'—':Number(v).toFixed(n);
@@ -82,13 +82,15 @@ function clearStockDetail(message){
 async function selectStock(symbol){
   if(!symbol)return;
   const job=S.job;
+  if(job)$('#live-quote').checked=false;
   if(S.stockLoading&&S.selected===symbol&&S.loadingJob===job)return;
   S.selected=symbol;
   clearStockDetail('正在加载 '+(S.marketRows?.find(row=>row.symbol===symbol)?.name||symbol)+' 的已计算结果…');
   const token=++S.stockRequest;S.stockLoading=true;S.loadingJob=job;
   $$('#market-body tr').forEach(row=>row.classList.toggle('selected',row.dataset.symbol===symbol));
   try{
-    const data=await api('/api/stock/'+symbol+(job?'?job='+encodeURIComponent(job):''));
+    const live=!job&&$('#live-quote').checked;
+    const data=await api(live?'/api/live-stock/'+symbol+'?period='+(['day','30m','5m','all'].includes(S.period)?S.period:'day'):'/api/stock/'+symbol+(job?'?job='+encodeURIComponent(job):''));
     if(token!==S.stockRequest||S.selected!==symbol||S.job!==job)return;
     if(data.available&&data.summary?.symbol&&data.summary.symbol!==symbol)throw Error('结果股票与选择不一致，请刷新重试');
     S.data=data;S.detailJob=job;$('#stock-empty').hidden=data.available;$('#stock-detail').hidden=!data.available;
@@ -101,7 +103,7 @@ async function selectStock(symbol){
       else box.append(button('计算该股',()=>openJob(symbol),'button primary'));
       return;
     }
-    prepareSignalDisplay();renderStock();
+    prepareSignalDisplay();renderStock();renderLiveStatus();
   }catch(error){
     if(token!==S.stockRequest||S.selected!==symbol||S.job!==job)return;
     disposeCharts();S.data=null;S.detailJob=job;$('#stock-detail').hidden=true;$('#stock-empty').hidden=false;
@@ -109,21 +111,21 @@ async function selectStock(symbol){
   }finally{if(token===S.stockRequest)S.stockLoading=false;}
 }
 
-function renderStock(){
+function renderStock(preserve=false){
   const {chart:c,summary:s}=S.data;
   text('#stock-name',s.name);text('#stock-code',s.symbol.slice(2)+' · '+{sh:'SSE',sz:'SZSE',bj:'BSE'}[s.symbol.slice(0,2)]);
   text('#stock-price',fmt(s.price));text('#stock-change',(s.change_pct>=0?'+':'')+fmt(s.change_pct)+'%');
   $('.stock-quote').className='stock-quote '+(s.change_pct>=0?'up':'down');
-  text('#stock-date',`行情截止 ${s.last_close_time} · TDX不复权 · 北京时间 · 固定引擎 ${S.data.chart.engine_commit?.slice(0,8)||'旧模型'}`);
-  text('#stock-version',(s.algorithm||'原版本')+' · 4.1.0 固定引擎 / '+(MODE[s.mode]||'三周期校验'));
+  text('#stock-date',s.live?`最新交易日 ${s.live.latest_bar_at.slice(0,10)}${s.live.forming?' · 今日K线形成中':''} · 获取 ${s.live.received_at.slice(11,19)} · 确认结构截止 ${s.live.confirmed_through.slice(0,16).replace('T',' ')} · 北京时间`:`历史快照 · 行情截止 ${s.last_close_time} · TDX不复权 · 北京时间`);
+  text('#stock-version',(s.algorithm||'原版本')+' · 4.1.1 固定引擎 / '+(MODE[s.mode]||'三周期校验'));
   let message=s.result_text||'结构研究结果';const states=s.multiframe_states||{};
   if(states.waiting_lower_confirmation)message+=`；${states.waiting_lower_confirmation}个历史候选待低级别确认`;
   if(states.blocked_terminal_history)message+=`；${states.blocked_terminal_history}个候选缺少终结段分钟历史`;
   if(s.replay)message+=`；逐日回放 ${integer(s.replay.bars)} 根 / ${integer(s.replay.events)} 条事件，最终状态一致`;
   text('#stock-message',message);$('#stock-message').className='message'+(s.state==='blocked_data_contract'?' warning':'');
-  $$('#period-tabs button').forEach(b=>{b.disabled=b.dataset.period!=='all'&&!c.panels.some(p=>p.period===b.dataset.period);});
+  $$('#period-tabs button').forEach(b=>{b.disabled=!s.live&&b.dataset.period!=='all'&&!c.panels.some(p=>p.period===b.dataset.period);});
   if(S.period!=='all'&&!c.panels.some(p=>p.period===S.period))S.period='all';
-  renderCharts();renderEvidence(s);renderKlineSummary();
+  renderCharts(preserve);renderEvidence(s);renderKlineSummary();
 }
 
 function renderEvidence(s){
@@ -150,7 +152,8 @@ function renderEvidence(s){
 const NS='http://www.w3.org/2000/svg';
 function svgElement(name,attrs,value){const n=document.createElementNS(NS,name);for(const [k,v]of Object.entries(attrs||{}))n.setAttribute(k,v);if(value!==undefined)n.textContent=value;return n;}
 function svgLabel(g,x,y,value,color,size=11){if(!Number.isFinite(x)||!Number.isFinite(y))return;g.append(svgElement('text',{x,y,fill:color,'font-size':size,'font-family':'Microsoft YaHei, sans-serif','font-weight':500,stroke:'#fff','stroke-width':3,'paint-order':'stroke'},value));}
-function renderCharts(){
+function renderCharts(preserve=false){
+  const ranges=new Map(preserve===true?S.charts.map(c=>[c.p.period,{range:c.chart.timeScale().getVisibleLogicalRange(),time:c.chart.timeScale().getVisibleRange(),first:c.p.bars[0]?.time,count:c.p.bars.length}]):[]);
   disposeCharts();renderSignalPicker();$$('#period-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.period===S.period));
   const panels=S.data.chart.panels.filter(p=>S.period==='all'?['day','30m','5m'].includes(p.period):p.period===S.period);
   $('#charts').classList.toggle('single-chart',panels.length===1);
@@ -176,6 +179,7 @@ function renderCharts(){
     volume.setData(p.bars.filter(b=>b.volume!=null).map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?'#e8a2a580':'#80c4b780'})));volume.priceScale().applyOptions({scaleMargins:{top:.87,bottom:.01},visible:false});
     const initial=SignalChart.presentation(annotations,{period:p.period,rank:S.rank,showInvalid:true}).latest;
     chart.timeScale().setVisibleLogicalRange(S.range==='signals'&&initial?SignalChart.markerRange(initial,p.bars.length):{from:S.range==='recent'?Math.max(0,p.bars.length-300):-2,to:p.bars.length+8});
+    const previous=ranges.get(p.period);if(previous?.range){if(previous.first===p.bars[0]?.time){const delta=previous.range.to>=previous.count-1?p.bars.length-previous.count:0;chart.timeScale().setVisibleLogicalRange({from:previous.range.from+delta,to:previous.range.to+delta});}else if(previous.time)chart.timeScale().setVisibleRange(previous.time);}
     const lookup=new Map(p.bars.map(b=>[b.time,b]));
     chart.subscribeCrosshairMove(param=>{const bar=lookup.get(param.time);if(!bar||!param.point){tooltip.hidden=true;return;}tooltip.hidden=false;tooltip.replaceChildren(node('b','',bar.date_cn));
       for(const [key,value]of (isLine?[['价格',fmt(bar.value)],['成交量',integer(bar.volume)+'股']]:[['开盘',fmt(bar.open)],['最高',fmt(bar.high)],['最低',fmt(bar.low)],['收盘',fmt(bar.close)],['成交量',integer(bar.volume)+'股'],['状态',bar.is_closed===false?'形成中':'已收盘']])){const line=node('div');line.append(node('span','',key),node('span','',value));tooltip.append(line);}
@@ -197,11 +201,13 @@ function renderCharts(){
     const resize=()=>{if(container.clientWidth){const range=chart.timeScale().getVisibleLogicalRange();chart.resize(container.clientWidth,container.clientHeight);if(range)chart.timeScale().setVisibleLogicalRange(range);requestAnimationFrame(draw);}};
     const observer=new ResizeObserver(resize);observer.observe(container);S.charts.push({chart,candles,svg,draw,resize,observer,p,container,card});requestAnimationFrame(draw);
   });
-  updateSignalVisibility();window.chartReady=true;window.workbenchProof=()=>({selected:S.selected,version:'4.1.0',panels:S.charts.map(c=>({period:c.p.period,bars:c.p.bars.length,segments:c.p.segments.length,first:c.p.bars[0]?.date_cn,last:c.p.bars.at(-1)?.date_cn,visible:c.chart.timeScale().getVisibleLogicalRange(),signal_annotations:c.p.visible_signal_annotations?.length||0,signal_render:c.p.signal_render_stats||null})),executionAllowed:false});
+  updateSignalVisibility();window.chartReady=true;window.workbenchProof=()=>({selected:S.selected,version:'4.1.1',live:S.data?.summary?.live||null,panels:S.charts.map(c=>({period:c.p.period,bars:c.p.bars.length,segments:c.p.segments.length,first:c.p.bars[0]?.date_cn,last:c.p.bars.at(-1)?.date_cn,forming:c.p.bars.at(-1)?.is_closed===false,visible:c.chart.timeScale().getVisibleLogicalRange(),signal_annotations:c.p.visible_signal_annotations?.length||0,signal_render:c.p.signal_render_stats||null})),executionAllowed:false});
 }
 
 async function selectPeriod(period,date=null){
   if(!S.data?.available)return;const symbol=S.selected,job=S.job,stockRequest=S.stockRequest;
+  if(S.data.summary.live&&['day','30m','5m','all'].includes(period)){S.period=period;await selectStock(symbol);return;}
+  if(S.data.summary.live){$('#live-quote').checked=false;await selectStock(symbol);if(!S.data?.available)return;text('#live-quote-status','扩展周期查看历史快照；点击刷新实时K线返回日/30分/5分实时图');return selectPeriod(period,date);}
   if(period!=='all'&&(!S.data.chart.panels.some(p=>p.period===period)||['timeshare','five_days'].includes(period))){
     try{const params=new URLSearchParams({period});if(S.job)params.set('job',S.job);if(date)params.set('date',date);const result=await api('/api/stock/'+symbol+'?'+params);if(S.selected!==symbol||S.job!==job||S.stockRequest!==stockRequest)return;
       if(!result.available){disposeCharts();$('#charts').append(node('div','empty panel',result.reason));toast(result.reason);return;}
@@ -282,16 +288,17 @@ for(const [id,key]of [['#exchange','exchange'],['#result-filter','filter'],['#jo
 $('#prev-page').onclick=()=>{S.offset=Math.max(0,S.offset-S.limit);refreshMarket();};$('#next-page').onclick=()=>{S.offset+=S.limit;refreshMarket();};
 $$('#period-tabs button').forEach(b=>b.onclick=()=>selectPeriod(b.dataset.period));$$('[data-layer]').forEach(input=>input.onchange=()=>{S.layers[input.dataset.layer]=input.checked;S.charts.forEach(c=>c.draw());});
 $('#extended-period').onchange=e=>{if(e.target.value)selectPeriod(e.target.value);};$('#range-all').onclick=()=>setRange('all');$('#range-recent').onclick=()=>setRange('recent');$('#zoom-in').onclick=()=>zoom(.65);$('#zoom-out').onclick=()=>zoom(1.5);$('#locate-date').onclick=locateDate;
-$('#refresh-now').onclick=()=>{openJob(S.selected);$('#job-mode').value='full';$('#job-refresh').checked=true;updateJobNote();};
-async function quoteTick(){if(!$('#live-quote').checked||document.hidden||S.quotePending)return;S.quotePending=true;const symbol=S.selected;try{const q=await api('/api/quote/'+symbol);if(symbol===S.selected)text('#live-quote-status',`接口报价 ${fmt(q.quote.price)} · 获取于 ${q.received_at.slice(11,19)} · 休市可为最后交易日报价；结构按上次计算时点`);}catch(e){text('#live-quote-status','报价更新失败：'+e.message);}finally{S.quotePending=false;}}
-$('#live-quote').onchange=quoteTick;setInterval(quoteTick,15000);
-$('#export-json').onclick=async()=>{if(!S.data?.available)return;const b=$('#export-json');b.disabled=true;try{const params=new URLSearchParams({full:'1'});if(S.job)params.set('job',S.job);const full=await api('/api/stock/'+S.selected+'?'+params);download(new Blob([JSON.stringify(full,null,2)],{type:'application/json'}),S.data.summary.name+'_'+(S.data.summary.algorithm||'原版本')+'_结构证据.json');}catch(e){toast(e.message);}finally{b.disabled=false;}};$('#export-png').onclick=exportPNG;
+function renderLiveStatus(){const m=S.data?.summary?.live;text('#live-quote-status',m?`K线获取 ${m.received_at.slice(11,19)} · 最新交易日 ${m.latest_bar_at.slice(0,10)} · ${m.forming?'今日K线形成中':'最新K线已收盘'}${m.latest_session_is_today?'':' · 尚无今日K线，可能休市/停牌/行情未更新'} · TDX不复权`:'历史任务快照；点击刷新实时K线查看最新行情');}
+async function quoteTick(force=false){if(!S.selected||S.job||S.stockLoading||(!force&&(!$('#live-quote').checked||document.hidden||S.view!=='market'))||S.quotePending)return;S.quotePending=true;const symbol=S.selected,token=S.stockRequest,period=S.period;try{const q=await api('/api/live-stock/'+symbol+'?period='+(['day','30m','5m','all'].includes(period)?period:'day')+(force?'&fresh=1':''));if(symbol===S.selected&&token===S.stockRequest&&period===S.period&&$('#live-quote').checked){S.data=q;renderStock(true);renderLiveStatus();}}catch(e){if(symbol===S.selected&&token===S.stockRequest)text('#live-quote-status','K线更新失败：'+e.message+'；保留上次数据，获取时间未更新');}finally{S.quotePending=false;}}
+$('#refresh-now').onclick=()=>{S.job='';$('#job-filter').value='';$('#live-quote').checked=true;if(!['day','30m','5m','all'].includes(S.period))S.period='day';if(S.data?.summary?.live)quoteTick(true);else selectStock(S.selected);};
+$('#live-quote').onchange=()=>{if($('#live-quote').checked){S.job='';$('#job-filter').value='';if(!['day','30m','5m','all'].includes(S.period))S.period='day';selectStock(S.selected);}else selectStock(S.selected);};setInterval(()=>quoteTick(),15000);
+$('#export-json').onclick=async()=>{if(!S.data?.available)return;const b=$('#export-json');b.disabled=true;try{const params=new URLSearchParams({full:'1'});if(S.job)params.set('job',S.job);const full=await api(S.data.summary.live?'/api/live-stock/'+S.selected+'?period='+(['day','30m','5m','all'].includes(S.period)?S.period:'day')+'&full=1':'/api/stock/'+S.selected+'?'+params);download(new Blob([JSON.stringify(full,null,2)],{type:'application/json'}),S.data.summary.name+'_'+(S.data.summary.algorithm||'原版本')+'_结构证据.json');}catch(e){toast(e.message);}finally{b.disabled=false;}};$('#export-png').onclick=exportPNG;
 $('#close-errors').onclick=()=>$('#errors-panel').hidden=true;
 $('#start-data').onclick=async()=>{const b=$('#start-data');b.disabled=true;text('#data-status','正在检查行情服务，请稍候…');try{const result=await api('/api/data-service',{});text('#data-status',result.ready?'行情服务可用，真实报价请求已通过。':'行情暂无返回');}catch(e){text('#data-status',e.message);}finally{b.disabled=false;}};
 $('#refresh-universe').onclick=async()=>{const b=$('#refresh-universe');b.disabled=true;try{const data=await api('/api/universe/refresh',{});text('#data-status',`已更新供应商股票池：${integer(data.count)}只。已有任务保持原股票范围。`);refreshOverview();refreshMarket();}catch(e){text('#data-status',e.message);}finally{b.disabled=false;}};
 window.addEventListener('error',e=>console.error(e.message));
 S.followJob=sessionStorage.getItem('chanlun-follow-job');
-Promise.all([refreshOverview(),refreshMarket(),selectStock(S.selected)]).then(()=>window.workbenchReady=true);
+(async()=>{try{const h=await api('/api/health');if(h.offline_start)$('#live-quote').checked=false;}catch(e){text('#live-quote-status',e.message);}await Promise.all([refreshOverview(),refreshMarket(),selectStock(S.selected)]);window.workbenchReady=true;})();
 setInterval(()=>{if(!document.hidden){refreshOverview();if(S.view==='market')refreshMarket();}},2500);
 
 $('#structure-rank').onchange=()=>{S.rank=Number($('#structure-rank').value);if(S.data?.chart)renderCharts();};
@@ -355,8 +362,8 @@ $('#signal-latest').onclick=()=>{
 
 function currentKlinePanel(){const panels=S.data?.chart?.panels||[];return panels.find(p=>p.period===S.period)||panels.find(p=>p.period==='day')||panels[0];}
 function renderKlineSummary(){const p=currentKlinePanel(),target=$('#kline-integrity');if(!p){target.textContent='尚未加载原始K线。';return;}const a=p.kline_audit||{};const corrections=p.anchor_corrections?.length||0;const review=p.geometry_review;const reviewText=review?` · 独立几何复核：${review.stroke_issues}笔/${review.segment_issues}段待复核`:'';target.textContent=`${PERIOD[p.period]||p.period} · 原始K线 ${integer(p.bars.length)} / 声明 ${integer(p.input_bars)} 根 · ${p.bars[0]?.date_cn||'—'} 至 ${p.bars.at(-1)?.date_cn||'—'} · ${S.data.chart.adjustment||'不复权'} · ${a.state==='invalid'?'数据校验失败：'+(a.errors||[]).join('；'):'OHLC与时间顺序已检查'}${corrections?' · 已纠正旧买卖标记 '+corrections+' 项':''}${reviewText}。全部原始K线已加载；视窗默认近期300根以保证可辨。`;}
-$('#kline-audit').onclick=async()=>{const p=currentKlinePanel();if(!p)return;try{const q=new URLSearchParams({audit_period:p.period});if(S.job)q.set('job',S.job);const a=await api('/api/kline-audit/'+S.selected+'?'+q);$('#kline-integrity').textContent=a.source_state==='matched'?`${PERIOD[p.period]}完整原始K线逐条核对通过：${integer(a.compared_rows)}根，开/高/低/收/量及时间全部匹配保存的来源CSV。输入SHA256 ${a.source_csv_sha256}。可得历史不自动等于上市以来无缺失。`:`来源核对：${a.source_state||a.state}。${(a.errors||[]).join('；')} 保存的来源文件不可用时，不能声称已完成源头比对。`;}catch(e){toast(e.message);}};
-$('#kline-csv').onclick=async()=>{const p=currentKlinePanel();if(!p)return;const q=new URLSearchParams({period:p.period});if(S.job)q.set('job',S.job);try{const r=await fetch('/api/kline-csv/'+S.selected+'?'+q);if(!r.ok)throw Error((await r.json()).error||'K线导出失败');download(await r.blob(),S.selected+'_'+p.period+'_完整原始K线.csv');toast('已导出完整原始K线');}catch(e){toast(e.message);}};
+$('#kline-audit').onclick=async()=>{const p=currentKlinePanel();if(!p)return;try{const q=new URLSearchParams({audit_period:p.period});if(S.data.summary.live)q.set('live','1');if(S.job)q.set('job',S.job);const a=await api('/api/kline-audit/'+S.selected+'?'+q);$('#kline-integrity').textContent=a.source_state==='matched'?`${PERIOD[p.period]}完整原始K线逐条核对通过：${integer(a.compared_rows)}根，开/高/低/收/量及时间全部匹配保存的${a.source_kind==='provider_raw_response'?'原始行情响应':'来源CSV'}。输入SHA256 ${a.source_csv_sha256}。可得历史不自动等于上市以来无缺失。`:`来源核对：${a.source_state||a.state}。${(a.errors||[]).join('；')} 保存的来源文件不可用时，不能声称已完成源头比对。`;}catch(e){toast(e.message);}};
+$('#kline-csv').onclick=async()=>{const p=currentKlinePanel();if(!p)return;const q=new URLSearchParams({period:p.period});if(S.data.summary.live)q.set('live','1');if(S.job)q.set('job',S.job);try{const r=await fetch('/api/kline-csv/'+S.selected+'?'+q);if(!r.ok)throw Error((await r.json()).error||'K线导出失败');download(await r.blob(),S.selected+'_'+p.period+'_完整原始K线.csv');toast('已导出完整原始K线');}catch(e){toast(e.message);}};
 $('#kline-table-open').onclick=()=>{const p=currentKlinePanel();if(!p)return;$('#kline-table-title').textContent=`${PERIOD[p.period]} · 全部 ${integer(p.bars.length)} 根原始K线（表格列出最近300根，CSV包含全部）`;const body=$('#kline-table-body');body.replaceChildren();for(const b of p.bars.slice(-300).reverse()){const tr=node('tr');for(const v of [b.source_index,b.date_cn,fmt(b.open,p.kline_audit?.price_precision||2),fmt(b.high,p.kline_audit?.price_precision||2),fmt(b.low,p.kline_audit?.price_precision||2),fmt(b.close,p.kline_audit?.price_precision||2),integer(b.volume),b.is_closed===false?'未闭合':'已闭合'])tr.append(node('td','',v));body.append(tr);}$('#kline-table-dialog').showModal();};$('#kline-table-close').onclick=()=>$('#kline-table-dialog').close();
 
 $('#chart-focus-mode').onclick=()=>{document.body.classList.toggle('chart-focus-mode');$('#chart-focus-mode').textContent=document.body.classList.contains('chart-focus-mode')?'退出看图专注':'看图专注';setTimeout(()=>S.charts.forEach(c=>c.resize()),60);};

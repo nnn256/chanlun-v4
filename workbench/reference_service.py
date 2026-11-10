@@ -17,7 +17,7 @@ CACHE=OrderedDict();LOCK=threading.RLock()
 
 
 def reference_report(symbol,period,bars,cutoff,adjustment='unadjusted',source='saved_raw_ohlcv'):
-    payload={'adapter_version':'native-context-review-v6','symbol':symbol,'period':period,'adjustment':adjustment,'cutoff':cutoff,'commit':COMMIT,'settings':SETTINGS,
+    payload={'adapter_version':'native-context-review-v6','symbol':symbol,'period':period,'source':source,'adjustment':adjustment,'cutoff':cutoff,'commit':COMMIT,'settings':SETTINGS,
              'bars':[[b.pos,b.closed_at,b.open,b.high,b.low,b.close,b.volume,b.closed] for b in bars]}
     key=hashlib.sha256(json.dumps(payload,allow_nan=False,separators=(',',':')).encode()).hexdigest()
     path=STATE/'reference-rebuild'/COMMIT[:12]/(key+'.json.gz')
